@@ -1,0 +1,13 @@
+- hosts:
+  - kube_cluster
+  - etcds
+  - chrony
+  become: true
+  gather_facts: true
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+  - { role: prepare/check-environment }
+  - { role: prepare/kernel }
+  - { role: prepare/chrony, when: "groups['chrony']|length > 0" }
+  - { role: prepare/initialize }
+  - { role: prepare/kube-install }

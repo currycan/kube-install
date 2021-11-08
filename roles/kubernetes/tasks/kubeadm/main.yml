@@ -1,0 +1,95 @@
+- name: 生成 bootstrap token
+  include_tasks: common/gen_bootstrap_token.yml
+
+- block:
+  - name: 获取 bootstrap_token
+    shell: >
+      cat "{{ k8s_pki_dir }}/token.csv" | grep bootstrap_token | cut -d ":" -f 2 | sed 's/^[ \t]*//g'
+    register: get_bootstrap_token
+
+  - name: 设置 bootstrap_token 变量
+    set_fact:
+      bootstrap_token: "{{ get_bootstrap_token.stdout }}"
+
+  - name: 获取 kubernetes 版本
+    shell: "kubeadm version -o short"
+    register: kubeadm_version_output
+
+  - name: 配置 kubernetes 版本参数
+    set_fact:
+      kube_version: "{{ kubeadm_version_output.stdout.split('v')[1] }}"
+  run_once: true
+  delegate_to: "{{ groups['masters'][0] }}"
+
+- name: 所有 kube_cluster 节点渲染 kubeadm 的配置文件
+  template:
+    src: >-
+      {% if inventory_hostname == groups['masters'][0] -%}
+      kubeadm/kubeadm-controlplane-init.yaml.j2
+      {%- elif inventory_hostname in groups['kube_masters'] -%}
+      kubeadm/kubeadm-controlplane-join.yaml.j2
+      {%- else -%}
+      kubeadm/kubeadm-join.yaml.j2
+      {%- endif %}
+    dest: "{{ kubernetes_etc_dir }}/kubeadm-config.yaml"
+    owner: "root"
+    group: "root"
+    mode: 0644
+
+- name: 所有 kube_cluster 节点渲染相关配置文件
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_items:
+    - { src: "kubelet/10-kubeadm.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/10-kubeadm.conf" }
+    - { src: "kubelet/11-container-runtime.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/11-container-runtime.conf" }
+    - { src: "kubelet/12-cgroup.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/12-cgroup.conf" }
+    - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
+    - { src: "kubelet/kubelet-config.yml", dest: "{{ kubelet_data_dir }}/config-tmp.yaml" }
+    - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config-tmp.yaml" }
+
+- name: 和并 kubelet-config.yml 和 kube-proxy-config.yaml 至 kubeadm-config.yaml
+  shell: >
+    cat {{ kubelet_data_dir }}/config-tmp.yaml >> {{ kubernetes_etc_dir }}/kubeadm-config.yaml;
+    cat {{ kube_proxy_data_dir }}/config-tmp.yaml >> {{ kubernetes_etc_dir }}/kubeadm-config.yaml;
+    # rm -f {{ kubelet_data_dir }}/config-tmp.yml;
+    # rm -f {{ kube_proxy_data_dir }}/config-tmp.yml;
+
+- name: 所有 kube_cluster 节点加载依赖镜像
+  shell: >
+    {% if container_runtime == 'docker' -%}
+      docker load -i {{ cache_dir }}/images/all.tar.gz
+    {% elif container_runtime == 'containerd' -%}
+      ctr -n=k8s.io images import {{ cache_dir }}/images/all.tar.gz
+    {%- endif -%}
+
+- name: 加载 master 节点各组件镜像
+  when: "inventory_hostname in groups['kube_masters']"
+  shell: >
+    {% if container_runtime == 'docker' -%}
+      docker load -i {{ cache_dir }}/images/master.tar.gz
+    {% elif container_runtime == 'containerd' -%}
+      ctr -n=k8s.io images import {{ cache_dir }}/images/master.tar.gz
+    {%- endif -%}
+
+- name: worker 节点加载 coredns 镜像
+  when: inventory_hostname in groups['kube_nodes']
+  shell: >
+    {% if container_runtime == 'docker' -%}
+      docker load -i {{ cache_dir }}/images/worker.tar.gz
+    {% elif container_runtime == 'containerd' -%}
+      ctr -n=k8s.io images import {{ cache_dir }}/images/worker.tar.gz
+    {%- endif -%}
+
+- name: 设置 kubelet 开机启动
+  systemd:
+    name: kubelet
+    daemon_reload: yes
+    enabled: yes
+
+- include_tasks: master.yml
+
+- include_tasks: worker.yml

@@ -1,0 +1,15 @@
+#! /bin/env bash
+
+alias etcd2="ETCDCTL_API=2 etcdctl --cert-file={{ etcd_cert_healthcheck_client }} \
+    --key-file={{ etcd_cert_healthcheck_client_key }} \
+    --ca-file={{ etcd_ca }} \
+    --endpoints '{{ etcd_servers }}'"
+
+alias etcd3="ETCDCTL_API=3 etcdctl --cert={{ etcd_cert_healthcheck_client }} \
+    --key={{ etcd_cert_healthcheck_client_key }} \
+    --cacert={{ etcd_ca }} \
+    --endpoints '{{ etcd_servers }}'"
+
+function etcd-status(){
+    etcd3 endpoint status --write-out=table
+}

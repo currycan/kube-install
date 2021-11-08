@@ -1,0 +1,156 @@
+---
+{# https://kubernetes.io/zh/docs/reference/config-api/kubelet-config.v1beta1/#kubelet-config-k8s-io-v1beta1-KubeletConfiguration #}
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+# 身份验证
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    cacheTTL: 2m0s
+    enabled: true
+  x509:
+    clientCAFile: "{{ kubernetes_ca }}"
+# 授权
+authorization:
+  mode: Webhook
+  webhook:
+    cacheAuthorizedTTL: 5m0s
+    cacheUnauthorizedTTL: 30s
+cgroupDriver: "{{ cgroup_driver }}"
+cgroupRoot: "/"
+cgroupsPerQOS: true
+clusterDNS:
+- "{{ cluster_dns_ip }}"
+clusterDomain: "{{ cluster_domain_name }}"
+configMapAndSecretChangeDetectionStrategy: Watch
+containerLogMaxFiles: 10
+containerLogMaxSize: 20Mi
+contentType: application/vnd.kubernetes.protobuf
+cpuCFSQuota: true
+cpuCFSQuotaPeriod: 100ms
+cpuManagerReconcilePeriod: 10s
+enableContentionProfiling: true
+enableControllerAttachDetach: true
+enableDebuggingHandlers: true
+enableSystemLogHandler: true
+# Node 资源驱逐策略
+evictionHard:
+  imagefs.available: "15%"
+  memory.available: "300Mi"
+  nodefs.available: "10%"
+  nodefs.inodesFree: "5%"
+evictionMaxPodGracePeriod: 30
+evictionPressureTransitionPeriod: 0s
+evictionSoft:
+  imagefs.available: "15%"
+  memory.available: "512Mi"
+  nodefs.available: "15%"
+  nodefs.inodesFree: "10%"
+evictionSoftGracePeriod:
+  imagefs.available: 3m
+  memory.available: 1m
+  nodefs.available: 3m
+  nodefs.inodesFree: 1m
+evictionMinimumReclaim: {}
+failSwapOn: true
+cpuManagerPolicy: static
+# Node 资源预留
+enforceNodeAllocatable:
+- pods
+{% if kube_reserved_enabled is defined and kube_reserved_enabled %}
+- kube-reserved # 开启 kube 资源预留
+{% endif %}
+{% if  system_reserved_enabled is defined and system_reserved_enabled %}
+- system-reserved # 开启 system 资源预留
+{% endif %}
+# Cgroups
+{% if kube_reserved_enabled is defined and kube_reserved_enabled %}
+# kubelet 资源驱逐策略
+kubeReserved:
+  cpu: "100m"
+  memory: "400Mi"
+  ephemeral-storage: "1Gi"
+kubeReservedCgroup: "/kube.slice"  # 指定 kube 资源预留的 cgroup
+{% endif %}
+# Cgroups
+{% if system_reserved_enabled is defined and system_reserved_enabled %}
+# 系统资源驱逐策略
+systemReserved:
+  cpu: "200m"
+  memory: "300Mi"
+  ephemeral-storage: "1Gi"
+systemReservedCgroup: "/system.slice"  # 指定 system 资源预留的
+{% endif %}
+eventBurst: 10
+eventRecordQPS: 5
+{% if feature_gates is defined and feature_gates != None-%}
+featureGates:
+{% for k,v in feature_gates.items() %}
+  {{ k }}: {{ v | lower }}
+{% endfor -%}
+{% endif -%}
+fileCheckFrequency: 20s
+hairpinMode: hairpin-veth
+healthzBindAddress: 127.0.0.1
+# kubelet健康检查端口
+httpCheckFrequency: 20s
+# 镜像删除策略
+imageGCHighThresholdPercent: 85
+imageGCLowThresholdPercent: 80
+imageMinimumGCAge: 2m0s
+iptablesDropBit: 15
+iptablesMasqueradeBit: 14
+kubeAPIBurst: 100
+kubeAPIQPS: 100
+makeIPTablesUtilChains: true
+maxOpenFiles: 1000000
+maxPods: {{ kubelet_max_pods }}
+nodeLeaseDurationSeconds: 40
+nodeStatusMaxImages: 50
+{% if (kube_version is version('1.15.0', '>=')) %}
+nodeStatusReportFrequency: 1m0s
+{% endif %}
+nodeStatusUpdateFrequency: 10s
+oomScoreAdj: -999
+podPidsLimit: -1
+# 监听地址
+address: 0.0.0.0
+registryBurst: 20
+registryPullQPS: 5
+{% if ansible_distribution_release == "bionic" %}
+resolvConf: /run/systemd/resolve/resolv.conf
+{% else %}
+resolvConf: /etc/resolv.conf
+{% endif %}
+rotateCertificates: true
+# 只能设置为 false，否则启动报错: panic: runtime error: invalid memory address or nil pointer dereference
+runOnce: false
+runtimeRequestTimeout: 15m0s
+serializeImagePulls: false
+serverTLSBootstrap: true
+{% if (kube_version is version('1.21.0', '>=')) %}
+shutdownGracePeriod: 30s
+shutdownGracePeriodCriticalPods: 10s
+{% endif %}
+staticPodPath: "{{ manifest_dir }}"
+streamingConnectionIdleTimeout: 4h0m0s
+syncFrequency: 1m0s
+tlsCipherSuites:
+- TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+- TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+- TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+- TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+- TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+- TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+- TLS_RSA_WITH_AES_256_GCM_SHA384
+- TLS_RSA_WITH_AES_128_GCM_SHA256
+volumePluginDir: /usr/libexec/kubernetes/kubelet-plugins/volume/exec/
+volumeStatsAggPeriod: 1m0s
+AllowedUnsafeSysctls:
+- net.core.somaxconn
+- kernel.msg*
+kernelMemcgNotification: false
+protectKernelDefaults: false
+topologyManagerPolicy: "none"
+topologyManagerScope: "container"

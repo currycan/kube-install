@@ -1,0 +1,3 @@
+- name: rpm 安装 kubeadm kubelet 和 kubectl
+  shell: >-
+    rpm -Uvh --nodeps --force {{ cache_dir }}/kubernetes/*.rpm

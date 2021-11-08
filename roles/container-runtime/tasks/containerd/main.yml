@@ -1,0 +1,80 @@
+- name: rpm 安装 containerd
+  shell: >-
+    rpm -Uvh --nodeps --force {{ cache_dir }}/containerd/*.rpm
+
+- name: 安装 cni
+  copy:
+    src: "{{ cache_dir }}/binary/containerd/"
+    dest: "/"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: 安装 crictl
+  copy:
+    src: "{{ cache_dir }}/binary/crictl/"
+    dest: "/usr/bin/"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: crictl 命令自动补全
+  shell: >
+    crictl completion bash > /etc/bash_completion.d/crictl;
+    source /etc/bash_completion.d/crictl
+  args:
+    executable: /bin/bash
+
+- name: 创建 containerd 配置文件目录
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ containerd_etc_dir }}"
+    - "{{ cni_etc_dir }}"
+
+- name: 配置 crictl 客户端
+  template:
+    src: "containerd/crictl.yaml.j2"
+    dest: /etc/crictl.yaml
+    mode: 644
+
+# 暂时发现配置后会出现:runtime/cgo: pthread_create failed: Resource temporarily unavailable 报错，可能配置有问题！！！
+- name: 配置 containerd 配置文件
+  when: container_runtime == 'containerd'
+  template:
+    src: "containerd/config.toml.j2"
+    dest: "{{ containerd_etc_dir }}/config.toml"
+    mode: 644
+  # notify: 确认 containerd 运行状态
+
+- name: 配置 containerd service 文件
+  template:
+    src: "containerd/{{ item }}.j2"
+    dest: "{{ systemd_service_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - containerd.service
+  register: change_system_service
+  # notify: 确认 containerd 运行状态
+
+- name: 启动 containerd，并设置开机启动
+  systemd:
+    name: containerd
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
+  register: started_containerd
+  until: started_containerd is succeeded
+  retries: 3
+  delay: "{{ retry_stagger }}"
+
+- name: 以轮询的方式等待 containerd 启动完成
+  when: started_containerd is succeeded
+  shell: "systemctl status containerd.service | grep Active"
+  register: containerd_status
+  until: '"running" in containerd_status.stdout'
+  retries: 2
+  delay: "{{ retry_stagger }}"

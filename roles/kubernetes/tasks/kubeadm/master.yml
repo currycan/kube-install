@@ -1,0 +1,130 @@
+- block:
+  - name: 创建 master 节点各组件所需目录
+    file: path={{ item }} state=directory
+    with_items:
+    - "{{ kubernetes_etc_dir }}/audit"
+    - "{{ kubernetes_log_dir }}/audit"
+    - "{{ kubernetes_log_dir }}/kube-apiserver"
+    - "{{ kubernetes_log_dir }}/kube-controller-manager"
+    - "{{ kubernetes_log_dir }}/kube-scheduler"
+
+  - name: 生成 encryption config
+    include_tasks: common/encryption_config_secret.yml
+
+  - name: 获取 encryption config secret
+    shell: >
+      cat "{{kubernetes_etc_dir}}/encryption_config_secret.yml" | grep encryption_config_secret | cut -d ":" -f 2 | sed 's/^[ \t]*//g'
+    register: get_encryption_config_secret
+    delegate_to: "{{ groups['masters'][0] }}"
+
+  - name: 设置 encryption_config_secret 变量
+    set_fact:
+      encryption_config_secret: "{{ get_encryption_config_secret.stdout }}"
+
+  - name: master 节点渲染相关配置文件
+    template:
+      src: "{{ item.src }}.j2"
+      dest: "{{ item.dest }}"
+      owner: "root"
+      group: "root"
+      mode: "0644"
+    with_items:
+      #  EncryptionConfig 密钥注意不能修改，也就是不要重复生成。https://github.com/kubernetes/kubernetes/issues/66844
+      - { src: "encryption/config.yaml", dest: "{{ k8s_pki_dir }}/secrets-encryption.yaml" }
+      - { src: "audit/policy.yaml", dest: "{{ kubernetes_etc_dir }}/audit/policy.yaml" }
+
+  - name: 获取第一个 master 节点各组件状态
+    when:
+      - inventory_hostname == groups['masters'][0]
+    shell: >
+      cs_running_num=0;
+      for cs in {kube-apiserver,kube-controller-manager,kube-scheduler};
+      do
+        {% if container_runtime == 'docker' -%}
+        [ `docker ps --filter name=k8s_${cs}.* --filter status=running | wc -l` -eq 2 ] && cs_running_num=`expr $cs_running_num + 1`;
+        {% elif container_runtime == 'containerd' -%}
+        [ `crictl ps --name=${cs}.* --state running | wc -l` -eq 2 ] && cs_running_num=`expr $cs_running_num + 1`;
+        {%- endif -%}
+      done;
+      echo $cs_running_num
+    register: cs_statuses_result
+
+  - block:
+    # kubeadm init --pod-network-cidr="172.30.0.0/16" --kubernetes-version=v1.18.6 --image-repository=registry.aliyuncs.com/k8sxio --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests --dry-run
+    - debug: msg="初始化第一个 master 节点，可能需要一定时间。。"
+    - name: 初始化第一个 master 节点
+      shell: >
+        timeout -k 600s 600s;
+        systemctl stop kubelet.service;
+        rm -f {{ kubelet_data_dir }}/cpu_manager_state;
+        rm -f {{ kubelet_data_dir }}/memory_manager_state;
+        rm -f {{ manifest_dir }}/kube-*;
+        kubeadm init --config={{ kubernetes_etc_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
+      register: init_rslt
+      until: init_rslt.rc == 0
+      retries: 3
+      delay: "{{ retry_stagger | random + 2 }}"
+      ignore_errors: true
+
+    - name: kubeadm 初始化时输出结果写入文本
+      action: copy content="{{ init_rslt.stdout }}" dest="{{ kubernetes_etc_dir }}/kubeadm_init.stdout"
+
+    - name: 校验初始化第一个 master 节点是否成功
+      assert:
+        that: init_rslt is succeeded
+        msg: "节点：{{ inventory_hostname }} kubeadm int 失败"
+
+    - include_tasks: common/check_master_status.yml
+
+    when: 'cs_statuses_result.stdout is defined and cs_statuses_result.stdout != "3"'
+    run_once: true
+    delegate_to: "{{ groups['masters'][0] }}"
+
+  - name: 获取其他 master 节点各组件状态
+    shell: >
+      kubectl get nodes | grep {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} | wc -l
+    environment:
+      KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+    register: get_nodes_result
+
+  - block:
+    - debug: msg="其他 master 节点加入集群，可能需要一定时间。。"
+    - name: 其他 master 节点加入集群
+      shell: >
+        timeout -k 600s 600s
+        systemctl stop kubelet.service;
+        rm -f {{ kubelet_data_dir }}/cpu_manager_state;
+        rm -f {{ kubelet_data_dir }}/memory_manager_state;
+        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+      register: master_join_rslt
+      ignore_errors: true
+
+    # - name: 生成 master 节点 join token
+    #   shell: >
+    #     kubeadm token create --print-join-command --ttl=0
+    #   register: master_kubeadm_join_cmd
+
+    # - set_fact:
+    #     kubeadm_join: "{{ master_kubeadm_join_cmd.stdout }}"
+
+    # - debug: msg="其他 master 节点加入集群，可能需要一定时间。。"
+    # - name: 其他 master 节点加入集群
+    #   shell: >
+    #     "{{ kubeadm_join }} --control-plane"
+    #   register: master_join_rslt
+
+    # master使用kubeadm升级1.18之后 遇到新的node不能添加问题,https://github.com/kubernetes/website/pull/19868/files
+    # kubeadm init phase bootstrap-token
+    - name: master 节点 kubeadm join 输出结果写入文本
+      action: copy content="{{ master_join_rslt.stdout }}" dest="{{ kubernetes_etc_dir }}/master_kubeadm_join_rslt.stdout"
+
+    - name: 校验 master 节点加入集群是否成功
+      assert:
+        that: master_join_rslt is succeeded
+        msg: "节点：{{ inventory_hostname }} kubeadm join 失败"
+
+    - include_tasks: common/check_master_status.yml
+    when:
+      - 'get_nodes_result.stdout != "1"'
+      - inventory_hostname != groups['masters'][0]
+  when: "inventory_hostname in groups['kube_masters']"

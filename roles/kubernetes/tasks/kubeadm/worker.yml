@@ -1,0 +1,52 @@
+- block:
+  - name: 确认 worker 节点 kube-proxy 组件状态
+    shell: >
+      {% if container_runtime == 'docker' -%}
+        docker ps --filter name=k8s_kube-proxy.* --filter status=running | wc -l
+      {% elif container_runtime == 'containerd' -%}
+        crictl ps --name=kube-proxy.* --state running | wc -l
+      {%- endif -%}
+    register: kubeproxy_statuses_result
+
+  - block:
+    # - pause:
+    #     prompt: "暂停，手动确认继续执行，测试用。。。"
+
+    - debug: msg="worker 节点加入集群，可能需要一定时间。。"
+    - name: worker 节点加入集群
+      shell: >
+        timeout -k 600s 600s;
+        systemctl stop kubelet.service;
+        rm -f {{ kubelet_data_dir }}/cpu_manager_state;
+        rm -f {{ kubelet_data_dir }}/memory_manager_state;
+        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml \
+          --ignore-preflight-errors=FileAvailable--etc-kubernetes-pki-ca.crt \
+          --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+      register: worker_join_rslt
+      ignore_errors: true
+
+    # - name: 生成 worker 节点 join token
+    #   shell: >
+    #     kubeadm token create --print-join-command
+    #   delegate_to: "{{ groups['masters'][0] }}"
+    #   register: worker_kubeadm_join_cmd
+
+    # - set_fact:
+    #     kubeadm_join: "{{ worker_kubeadm_join_cmd.stdout }}"
+
+    # - debug: msg="worker 节点加入集群，可能需要一定时间。。"
+    # - name: worker 节点加入集群
+    #   shell: >
+    #     {{ kubeadm_join }}
+    #   register: worker_join_rslt
+
+    - name: 获取 worker 节点 kubeadm join 输出结果
+      action: copy content="{{ worker_join_rslt.stdout }}" dest="{{ kubernetes_etc_dir }}/worker_kubeadm_join_rslt.stdout"
+
+    - name: 校验 worker 节点加入集群是否成功
+      assert:
+        that: worker_join_rslt is succeeded
+        msg: "节点：{{ inventory_hostname }} kubeadm join 失败"
+    when:
+      - 'kubeproxy_statuses_result.stdout != "2"'
+  when: inventory_hostname in groups['kube_nodes']

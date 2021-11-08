@@ -1,0 +1,43 @@
+[deploy]
+test-env iface=ens33
+
+[chrony]
+test-env iface=ens33
+
+[etcds]
+test-env iface=ens33
+[add_etcds]
+
+[delete_etcds]
+
+[masters]
+test-env iface=ens33
+[add_masters]
+
+[delete_masters]
+
+[nodes]
+test-env iface=ens33
+
+[add_nodes]
+
+[delete_nodes]
+
+[kube_masters:children]
+masters
+add_masters
+delete_masters
+
+[kube_nodes:children]
+nodes
+add_nodes
+delete_nodes
+
+[kube_cluster:children]
+kube_masters
+kube_nodes
+
+[kube_etcds:children]
+etcds
+add_etcds
+delete_etcds

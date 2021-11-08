@@ -1,0 +1,23 @@
+# cgroup driver
+cgroup_driver: systemd
+
+cri_socket: >-
+  {%- if container_runtime == 'containerd' -%}
+  /run/containerd/containerd.sock
+  {%- else -%}
+  /var/run/dockershim.sock
+  {%- endif -%}
+
+# 配置 Dockerhub 国内镜像加速地址
+containerd_registries:
+  "docker.io": "https://registry-1.docker.io"
+  "gcr.io": "https://gcr.mirrors.ustc.edu.cn"
+  "k8s.gcr.io": "https://gcr.mirrors.ustc.edu.cn/google-containers/"
+  "quay.io": "https://quay.mirrors.ustc.edu.cn"
+
+# 定义国内加速镜像地址
+proxy_registries:
+  - "https://8trm4p9x.mirror.aliyuncs.com"
+  - "https://docker.mirrors.ustc.edu.cn"
+# insecure_registry_cidr:
+#   - "{{ vip_address.split('.')[:-1] | join('.') }}.0/24"

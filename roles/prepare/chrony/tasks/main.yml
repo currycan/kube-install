@@ -1,0 +1,24 @@
+- name:  卸载 ntp
+  package: name=ntp state=absent
+
+- name: rpm 安装 chrony
+  shell: >-
+    rpm -Uvh --nodeps --force {{ cache_dir }}/chrony/*.rpm
+
+- block:
+  - name: 配置 chrony server
+    template: src=server-centos.conf.j2 dest=/etc/chrony.conf
+
+  - name: 启动 chrony server
+    service: name=chronyd state=restarted enabled=yes
+  when: 'inventory_hostname == groups.chrony[0]'
+
+- block:
+  - name: 配置 chrony client
+    template: src=client-centos.conf.j2 dest=/etc/chrony.conf
+    when: 'ansible_distribution in ["CentOS","RedHat","Amazon"]'
+
+  - name: 启动 chrony client
+    service: name=chronyd state=restarted enabled=yes
+    when: 'ansible_distribution in ["CentOS","RedHat","Amazon"]'
+  when: 'inventory_hostname != groups.chrony[0]'

@@ -1,0 +1,26 @@
+- block:
+  - name: 配置 rbac 准入文件
+    copy:
+      src: "rbac"
+      dest: "{{ kubernetes_etc_dir }}"
+      mode: 0644
+
+  - name: 创建 RBAC 资源
+    shell: >
+      kubectl apply -f "{{ kubernetes_etc_dir }}/rbac"
+    environment:
+      KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+
+  # - name: 生成 kubelet-rubber-stamp 部署清单文件
+  #   copy:
+  #     src: "kubelet-rubber-stamp"
+  #     dest: "{{ kubernetes_etc_dir }}"
+  #     mode: 0644
+
+  # - name: 部署 kubelet-rubber-stamp
+  #   shell: >
+  #     kubectl apply -f "{{ kubernetes_etc_dir }}/kubelet-rubber-stamp"
+  #   environment:
+  #     KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true

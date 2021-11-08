@@ -1,0 +1,38 @@
+images:
+  infra:
+    name: >-
+      {%- if (kube_version is version('1.21.0', '>=')) -%}
+      {{ kube_image_repository }}/pause:3.5
+      {%- elif (kube_version is version('1.19.0', '>=') and containerd_version is version('1.21.0', '<') ) -%}
+      {{ kube_image_repository }}/pause:3.4.1
+      {%- else -%}
+      {{ kube_image_repository }}/pause:3.2
+      {%- endif -%}
+    type: all
+    enable: "true"
+
+  keepalived:
+    name: "docker.io/osixia/keepalived:2.0.20"
+    type: master
+    enable: "{%- if groups['kube_masters'] | length > 1 -%}true{% else %}false{%- endif -%}"
+  haproxy:
+    name: "docker.io/haproxy:2.3-alpine"
+    type: master
+    enable: "{%- if (groups['kube_masters'] | length > 1) and lb_mode == 'haproxy' -%}true{% else %}false{%- endif -%}"
+  envoy:
+    name: "docker.io/envoyproxy/envoy-alpine:v1.17.1"
+    type: master
+    enable: "{%- if ((groups['kube_masters'] | length > 1) and lb_mode == 'envoy') or container_network == 'cilium' -%}true{% else %}false{%- endif -%}"
+  nginx:
+    name: "docker.io/library/nginx:1.19-alpine"
+    type: master
+    enable: "{%- if (groups['kube_masters'] | length > 1) and lb_mode == 'nginx' -%}true{% else %}false{%- endif -%}"
+  openresty:
+    name: "docker.io/openresty/openresty:1.19.3.1-alpine"
+    type: master
+    enable: "{%- if (groups['kube_masters'] | length > 1) and lb_mode == 'openresty' -%}true{% else %}false{%- endif -%}"
+
+  coredns:
+    name: "docker.io/coredns/coredns:{{ coredns_version }}"
+    type: node
+    enable: "true"

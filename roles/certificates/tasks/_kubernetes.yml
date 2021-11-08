@@ -1,0 +1,67 @@
+- name: 获取 kubernetes 所有节点 ca 证书
+  slurp:
+    src: "{{ item }}"
+  with_items:
+    - "{{ kubernetes_ca }}"
+  register: slurp_kubernetes_ca_certs
+  run_once: true
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+
+- name: 创建 kubernetes 证书存放目录
+  file:
+    name: "{{ k8s_pki_dir }}"
+    state: directory
+
+- name: 分发 kubernetes ca 证书到所有节点
+  copy:
+    dest: "{{ item.source }}"
+    content: "{{ item.content | b64decode }}"
+    owner: root
+    group: root
+    mode: 0644
+  no_log: true
+  with_items: "{{ slurp_kubernetes_ca_certs.results }}"
+  when: inventory_hostname in groups['kube_cluster']
+
+- name: 生成 kubelet kubeconfig 文件
+  when: inventory_hostname in groups['kube_cluster']
+  shell: >
+    kubeadm init phase kubeconfig kubelet --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml
+
+- name: 获取 kubernetes master 节点相关证书和 kubeconfig
+  slurp:
+    src: "{{ item }}"
+  with_items:
+    - "{{ kubernetes_ca }}"
+    - "{{ kubernetes_ca_key }}"
+    - "{{ apiserver_cert }}"
+    - "{{ apiserver_cert_key }}"
+    - "{{ apiserver_kubelet_cert }}"
+    - "{{ apiserver_kubelet_cert_key }}"
+    - "{{ etcd_cert_apiserver_server }}"
+    - "{{ etcd_cert_apiserver_server_key }}"
+    - "{{ front_ca }}"
+    - "{{ front_ca_key }}"
+    - "{{ front_client }}"
+    - "{{ front_client_key }}"
+    - "{{ sa_public_key }}"
+    - "{{ sa_private_key }}"
+    - "{{kubernetes_etc_dir}}/admin.conf"
+    - "{{kubernetes_etc_dir}}/controller-manager.conf"
+    - "{{kubernetes_etc_dir}}/scheduler.conf"
+  register: slurp_kubernetes_master_certs
+  run_once: true
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+
+- name: 分发 kubernetes master 相关证书到 master 节点
+  copy:
+    dest: "{{ item.source }}"
+    content: "{{ item.content | b64decode }}"
+    owner: root
+    group: root
+    mode: 0644
+  no_log: true
+  with_items: "{{ slurp_kubernetes_master_certs.results }}"
+  when:
+    - inventory_hostname in groups['kube_masters']
+    - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)

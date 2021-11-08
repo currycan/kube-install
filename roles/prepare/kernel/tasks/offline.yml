@@ -1,0 +1,6 @@
+- block:
+  - debug: msg="rpm 安装内核，可能需要一定时间。。"
+  - name: 安装内核
+    shell: >-
+      rpm -Uvh --nodeps --force {{ cache_dir }}/kernel/*.rpm
+  when: 'fact_kernel_version not in kernel_offlie_version'

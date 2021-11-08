@@ -1,0 +1,195 @@
+---
+{% if (kube_version is version('1.15.0', '>=')) %}
+apiVersion: kubeadm.k8s.io/v1beta2
+{% else %}
+apiVersion: kubeadm.k8s.io/v1beta1
+{% endif %}
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
+  bindPort: 6443
+nodeRegistration:
+  kubeletExtraArgs:
+    network-plugin: cni
+    root-dir: {{ kubelet_data_dir }}
+    hostname-override: {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
+    pod-infra-container-image: "{{ images.infra.name }}"
+  criSocket: {{ cri_socket }}
+  name: {{ inventory_hostname }}
+{% if inventory_hostname in groups['kube_masters'] and inventory_hostname not in groups['kube_nodes'] %}
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+{% else %}
+  taints: []
+{% endif %}
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  description: "kubeadm bootstrap token"
+  token: {{ bootstrap_token }}
+  ttl: "0"
+  usages:
+  - signing
+  - authentication
+---
+{% if (kube_version is version('1.15.0', '>=')) %}
+apiVersion: kubeadm.k8s.io/v1beta2
+{% else %}
+apiVersion: kubeadm.k8s.io/v1beta1
+{% endif %}
+kind: ClusterConfiguration
+kubernetesVersion: v{{ kube_version }}
+clusterName: {{ cluster_name }}
+controlPlaneEndpoint: "{%- if groups['kube_masters'] | length == 1 -%}{{ groups['masters'][0] }}:6443{%- else -%}{{ lb_apiserver_ip }}:{{ lb_secure_port }}{%- endif %}"
+certificatesDir: {{ k8s_pki_dir }}
+{% if (kube_version is version('1.15.0', '>=')) %}
+dns:
+  type: CoreDNS
+{% if (kube_version is version('1.21.2', '>=')) %}
+  imageRepository: "docker.io/coredns"
+{% elif (containerd_version is version('1.21.0', '>=') and containerd_version is version('1.21.2', '<') ) %}
+  imageRepository: "docker.io"
+{% else %}
+  imageRepository: "docker.io/coredns"
+{% endif %}
+  imageTag: "{{ images.coredns.name.split(':')[1] }}"
+{% endif %}
+etcd:
+  external:
+    endpoints:
+{% for host in ((groups['etcds'] | union(groups['add_etcds'])) | difference(groups['delete_etcds'])) %}
+{% if hostvars[host]['ansible_host'] is defined %}
+    - https://{{ hostvars[host]['ansible_host'] }}:2379
+{% else %}
+    - https://{{ host }}:2379
+{% endif %}
+{% endfor %}
+    caFile: {{ etcd_ca }}
+    certFile: {{ etcd_cert_apiserver_server }}
+    keyFile: {{ etcd_cert_apiserver_server_key }}
+imageRepository: "{{ kube_image_repository }}"
+networking:
+  dnsDomain: {{ cluster_domain_name }}
+  podSubnet: {{ pod_network_cidr }}
+  serviceSubnet: "{{ service_subnet }}"
+apiServer:
+  extraArgs:
+{% if apiserver_enable_admission_plugins|length > 0 %}
+    enable-admission-plugins: {{ apiserver_enable_admission_plugins | join(',') }}
+{% endif %}
+{% if apiserver_disable_admission_plugins|length > 0 %}
+    disable-admission-plugins: {{ apiserver_disable_admission_plugins | join(',') }}
+{% endif %}
+    feature-gates: "{%- if feature_gates != None -%}{% for k,v in feature_gates.items() %}{{ k }}={{ v | lower }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}"
+{% if apiserver_extra_args|length > 0 %}
+{% for key in apiserver_extra_args %}
+    {{ key }}: "{{ apiserver_extra_args[key] }}"
+{% endfor %}
+{% endif %}
+  extraVolumes:
+    - hostPath: /etc/localtime
+      mountPath: /etc/localtime
+      pathType: File
+      readOnly: true
+      name: localtime
+    - hostPath: "{{ kubernetes_etc_dir }}/audit"
+      mountPath: "{{ kubernetes_etc_dir }}/audit"
+      pathType: DirectoryOrCreate
+      readOnly: true
+      name: audit-policy
+    - hostPath: "{{ kubernetes_log_dir }}/audit"
+      mountPath: "{{ kubernetes_log_dir }}/audit"
+      pathType: DirectoryOrCreate
+      name: audit-logs
+    # - hostPath: "{{ kubernetes_log_dir }}/kube-apiserver"
+    #   mountPath: "{{ kubernetes_log_dir }}/kube-apiserver"
+    #   pathType: DirectoryOrCreate
+    #   name: kube-apiserver-logs
+{% for volume in apiserver_extra_volumes %}
+    - name: {{ volume.name }}
+      hostPath: {{ volume.hostPath }}
+      mountPath: {{ volume.mountPath }}
+      readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
+{% endfor %}
+  certSANs:
+  - localhost
+  - kubernetes
+  - kubernetes.default
+  - kubernetes.default.svc
+{% for sub_domain in cluster_domain_name.split('.') %}
+  {%- set outer_loop = loop %}
+  - kubernetes.default.svc.{% for domain in cluster_domain_name.split('.') %}{% if loop.index <= outer_loop.index %}{{ domain }}{% if loop.index < outer_loop.index %}.{% endif %}{% endif %}{% endfor %}
+
+{% endfor %}
+{% for host in (groups['kube_masters']| default([])) | unique %}
+  - {{ hostvars[host]['ansible_hostname'] | lower }}
+{% endfor %}
+{% for domain in kube_master_external_domain %}
+  - {{ domain }}
+{% endfor %}
+  - 127.0.0.1
+  - 0:0:0:0:0:0:0:1
+  - {{ api_service_ip }}
+{% if lb_apiserver_ip is defined %}
+  - {{ lb_apiserver_ip }}
+{% endif %}
+{% for host in (groups['kube_masters'] | default([])) | unique %}
+  - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
+{% endfor %}
+{% for ip in kube_master_external_ip %}
+  - {{ ip }}
+{% endfor %}
+controllerManager:
+  extraArgs:
+    bind-address: 127.0.0.1
+    feature-gates: "{%- if feature_gates != None -%}{% for k,v in feature_gates.items() %}{{ k }}={{ v | lower }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}"
+    profiling: "false"
+
+{% if controller_extra_args|length > 0 %}
+{% for key in controller_extra_args %}
+    {{ key }}: "{{ controller_extra_args[key] }}"
+{% endfor %}
+{% endif %}
+  extraVolumes:
+    - hostPath: /etc/localtime
+      mountPath: /etc/localtime
+      pathType: File
+      readOnly: true
+      name: localtime
+    # - hostPath: "{{ kubernetes_log_dir }}/kube-controller-manager"
+    #   mountPath: "{{ kubernetes_log_dir }}/kube-controller-manager"
+    #   pathType: DirectoryOrCreate
+    #   name: kube-controller-manager-logs
+{% for volume in controller_manager_extra_volumes %}
+    - name: {{ volume.name }}
+      hostPath: {{ volume.hostPath }}
+      mountPath: {{ volume.mountPath }}
+      readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
+{% endfor %}
+scheduler:
+  extraArgs:
+    bind-address: 127.0.0.1
+    feature-gates: "{%- if feature_gates != None -%}{% for k,v in feature_gates.items() %}{{ k }}={{ v | lower }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}"
+    profiling: "false"
+{% if scheduler_extra_args|length > 0 %}
+{% for key in scheduler_extra_args %}
+    {{ key }}: "{{ scheduler_extra_args[key] }}"
+{% endfor %}
+{% endif %}
+  extraVolumes:
+    - hostPath: /etc/localtime
+      mountPath: /etc/localtime
+      pathType: File
+      readOnly: true
+      name: localtime
+    # - hostPath: "{{ kubernetes_log_dir }}/kube-scheduler"
+    #   mountPath: "{{ kubernetes_log_dir }}/kube-scheduler"
+    #   pathType: DirectoryOrCreate
+    #   name: kube-scheduler-logs
+{% for volume in scheduler_extra_volumes %}
+    - name: {{ volume.name }}
+      hostPath: {{ volume.hostPath }}
+      mountPath: {{ volume.mountPath }}
+      readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
+{% endfor %}

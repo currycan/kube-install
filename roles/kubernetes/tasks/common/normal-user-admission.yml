@@ -1,0 +1,52 @@
+- name: 判断执行用户是否存在
+  action: shell /usr/bin/getent passwd {{ item }} | grep {{ item }} | cut -d":" -f6
+  register: user_results
+  with_items:
+  - "{{ normal_user }}"
+
+- name: 创建 $HOME/.kube/config 配置清单目录
+  when: 'item.stdout != ""'
+  file: name="{{ item.stdout }}/.kube/" state=directory
+  with_items:
+    - "{{ user_results['results'] }}"
+
+- name: 获取 kubeconfig admin 文件
+  slurp:
+    src: "{{ kubernetes_etc_dir }}/admin.conf"
+  register: slurp_kubeconfig
+  run_once: true
+  delegate_to: "{{ groups['masters'][0] }}"
+
+- name: 非 root 用户配置 $HOME/.kube/config
+  when: 'item.stdout != ""'
+  copy:
+    content: "{{ slurp_kubeconfig.content | b64decode }}"
+    dest: "{{ item.stdout }}/.kube/config"
+    owner: "{{ item.item }}"
+    group: "{{ item.item }}"
+    mode: 0600
+  no_log: true
+  with_items:
+    - "{{ user_results['results'] }}"
+
+- name: 修改文件目录权限
+  when: 'item.stdout != ""'
+  file:
+    path: "{{ item.stdout }}/.kube/"
+    state: directory
+    recurse: yes
+    owner: "{{ item.item }}"
+    group: "{{ item.item }}"
+    mode: 0700
+  with_items:
+    - "{{ user_results['results'] }}"
+
+- name: 添加非 root 用户 kubectl 命令自动补全
+  when: 'item.stdout != ""'
+  lineinfile:
+    dest: "{{ item.stdout }}/.bashrc"
+    state: present
+    regexp: 'kubectl completion'
+    line: "source <(kubectl completion bash)"
+  with_items:
+  - "{{ user_results['results'] }}"

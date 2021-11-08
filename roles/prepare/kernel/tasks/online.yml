@@ -1,0 +1,43 @@
+- name: 删除原有 kernel repo
+  file:
+    name: /etc/yum.repos.d/kernel.repo
+    state: absent
+
+- name: 关闭禁用内核升级
+  lineinfile:
+    dest: "/etc/yum.conf"
+    state: absent
+    regexp: 'exclude=kernel*'
+
+- name: "添加 {{ centos7.kernel_repo_name }} yum 仓库"
+  yum_repository:
+    name: "{{ centos7.kernel_repo_name }}"
+    file: kernel
+    description: "{{ centos7.kernel_repo_name }}"
+    baseurl: "{{ centos7.kernel_repo_url }}"
+    enabled: yes
+    gpgcheck: no
+    state: present
+
+- name: 获取系统当前使用内核版本
+  set_fact:
+    fact_kernel_version: "{{ get_kernel_version.stdout.split('-')[0] }}"
+
+- name: 执行命令获取当前最新可装内核版本
+  shell: >
+    yum --disablerepo="*" --enablerepo="{{ centos7.kernel_repo_name }}" list available | tail -1 | awk -F' ' '{print $2}'
+  register: kernel_version
+
+- name: "获取最新可安装 {{ centos7.kernel_repo_name }} 版本"
+  set_fact:
+    latest_kernel_version: "{{ kernel_version.stdout }}"
+
+- block:
+  - debug: msg="yum 安装内核，可能需要一定时间。。"
+  - name: 安装 kernel
+    yum:
+      name: "{{ item }}"
+      state: present
+    with_items: "{{ centos7.kernel_package }}"
+    # - kernel-longterm-headers
+  when: 'fact_kernel_version not in latest_kernel_version'
