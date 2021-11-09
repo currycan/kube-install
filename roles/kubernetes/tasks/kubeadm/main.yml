@@ -10,14 +10,6 @@
   - name: 设置 bootstrap_token 变量
     set_fact:
       bootstrap_token: "{{ get_bootstrap_token.stdout }}"
-
-  - name: 获取 kubernetes 版本
-    shell: "kubeadm version -o short"
-    register: kubeadm_version_output
-
-  - name: 配置 kubernetes 版本参数
-    set_fact:
-      kube_version: "{{ kubeadm_version_output.stdout.split('v')[1] }}"
   run_once: true
   delegate_to: "{{ groups['masters'][0] }}"
 

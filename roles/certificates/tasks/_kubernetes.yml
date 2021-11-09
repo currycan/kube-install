@@ -1,3 +1,8 @@
+- name: 创建 kubernetes 证书存放目录
+  file:
+    name: "{{ k8s_pki_dir }}"
+    state: directory
+
 - name: 获取 kubernetes 所有节点 ca 证书
   slurp:
     src: "{{ item }}"
@@ -6,11 +11,6 @@
   register: slurp_kubernetes_ca_certs
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
-
-- name: 创建 kubernetes 证书存放目录
-  file:
-    name: "{{ k8s_pki_dir }}"
-    state: directory
 
 - name: 分发 kubernetes ca 证书到所有节点
   copy:
@@ -23,10 +23,6 @@
   with_items: "{{ slurp_kubernetes_ca_certs.results }}"
   when: inventory_hostname in groups['kube_cluster']
 
-- name: 生成 kubelet kubeconfig 文件
-  when: inventory_hostname in groups['kube_cluster']
-  shell: >
-    kubeadm init phase kubeconfig kubelet --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml
 
 - name: 获取 kubernetes master 节点相关证书和 kubeconfig
   slurp:

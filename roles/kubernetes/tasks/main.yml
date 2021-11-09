@@ -1,4 +1,15 @@
 - block:
+  - name: 获取 kubernetes 版本
+    shell: "kubeadm version -o short"
+    register: kubeadm_version_output
+
+  - name: 配置 kubernetes 版本参数
+    set_fact:
+      kube_version: "{{ kubeadm_version_output.stdout.split('v')[1] }}"
+  run_once: true
+  delegate_to: "{{ groups['masters'][0] }}"
+
+- block:
   - name: 添加 kubectl kubeadm 命令自动补全
     lineinfile:
       dest: "{{ ansible_env.HOME }}/.bashrc"
@@ -99,6 +110,7 @@
     until: set_taint_worker.rc == 0
     retries: 3
     delay: "{{ retry_stagger }}"
+    delegate_to: "{{ groups['masters'][0] }}"
 
   - block:
     - name: 创建 endpoint 配置清单目录

@@ -53,7 +53,7 @@
         - { src: "nginx/nginx.conf", dest: "{{ lb_config_dir }}/nginx.conf", lb: "openresty" }
         - { src: "openresty/openresty.yaml", dest: "{{ manifest_dir }}/lb-openresty.yaml", lb: "openresty" }
 
-    - name: 渲染临时 kubelet.conf 文件
+    - name: 渲染临时 kubelet 启动文件
       template:
         src: "{{ item.src }}.j2"
         dest: "{{ item.dest }}"
@@ -61,7 +61,7 @@
         group: "root"
         mode: "0644"
       with_items:
-        - { src: "kubelet/11-container-runtime.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/11-container-runtime.conf" }
+        - { src: "kubelet/00-kubelet-override.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf" }
         - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
 
     - name: bootstrap lb 服务
@@ -97,6 +97,11 @@
         daemon_reload: yes
         state: stopped
         enabled: yes
+
+    - name: 移除临时 kubelet.conf 文件
+      file:
+        name: "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf"
+        state: absent
     when: 'lb_statuses_result.stdout != "2"'
   when:
   - groups['kube_masters'] | length > 1

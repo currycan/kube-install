@@ -1,5 +1,5 @@
 - block:
-  - name: 配置 rbac 准入文件
+  - name: 配置 rbac 文件
     copy:
       src: "rbac"
       dest: "{{ kubernetes_etc_dir }}"
