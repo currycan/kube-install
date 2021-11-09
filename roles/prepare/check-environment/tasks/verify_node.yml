@@ -17,17 +17,17 @@
   set_fact:
     set_fact_kernel_version: "{{ get_kernel_version.stdout.split('-')[0] }}"
 
-- name: 校验节点系统内核
-  when: 'container_network == "cilium"'
-  assert:
-    that: set_fact_kernel_version is version('4.8', '>=')
-    msg: "节点：{{ inventory_hostname }} 系统内核版本小于4.8，当前内核版本是：{{ set_fact_kernel_version }}, cilium cni需要内核高于4.8，安装需求校验不通过。"
+# - name: 校验节点系统内核
+#   when: 'container_network == "cilium"'
+#   assert:
+#     that: set_fact_kernel_version is version('4.8', '>=')
+#     msg: "节点：{{ inventory_hostname }} 系统内核版本小于4.8，当前内核版本是：{{ set_fact_kernel_version }}, cilium cni需要内核高于4.8，安装需求校验不通过。"
 
-- name: 校验节点系统内核
-  when: 'container_network != "cilium"'
-  assert:
-    that: set_fact_kernel_version is version('3.10', '>=')
-    msg: "节点：{{ inventory_hostname }} 当前系统内核版本是：{{ set_fact_kernel_version }}, 内核版本过低，请先升级内核！！"
+# - name: 校验节点系统内核
+#   when: 'container_network != "cilium"'
+#   assert:
+#     that: set_fact_kernel_version is version('3.10', '>=')
+#     msg: "节点：{{ inventory_hostname }} 当前系统内核版本是：{{ set_fact_kernel_version }}, 内核版本过低，请先升级内核！！"
 
 - name: 校验节点系统架构
   assert:

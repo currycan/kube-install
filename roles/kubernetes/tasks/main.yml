@@ -78,9 +78,11 @@
   - name: 禁止 master 节点被调度，设置节点标签
     when: inventory_hostname in groups['kube_masters']
     shell: >
-      kubectl cordon {{ inventory_hostname }};
-      kubectl taint node {{ inventory_hostname }} node-role.kubernetes.io/master=true:NoSchedule --overwrite;
-      kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master='' --overwrite;
+      {% if groups['kube_masters'] | length > 1 -%}
+        kubectl cordon {{ inventory_hostname }};
+        kubectl taint node {{ inventory_hostname }} node-role.kubernetes.io/master=true:NoSchedule --overwrite;
+        kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master='' --overwrite;
+      {%- endif -%}
       kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/ingress='' --overwrite
     until: set_taint_master.rc == 0
     retries: 3

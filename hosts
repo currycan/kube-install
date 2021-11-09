@@ -19,6 +19,7 @@
 [delete_masters]
 
 [nodes]
+10.0.1.4
 
 [add_nodes]
 

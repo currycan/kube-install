@@ -111,7 +111,6 @@
 
 - name: 清理 'calico' 路由
   shell: "for rt in `ip route|grep bird|sed 's/blackhole//'|awk '{print $1}'`;do ip route del $rt;done;"
-  when: "container_network == 'calico'"
   ignore_errors: true
 
 - name: 清理 'ENV PATH'
