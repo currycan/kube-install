@@ -60,3 +60,16 @@
   until: '"running" in containerd_status.stdout'
   retries: 2
   delay: "{{ retry_stagger }}"
+
+- name: 获取其他 cni 配置文件
+  find:
+    paths: "{{ cni_etc_dir }}"
+    patterns: "*.conflist,*.conf"
+    # use_regex: true
+  register: find_files_to_delete
+
+- name: 删除其他 cni 配置文件
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ find_files_to_delete.files }}"
