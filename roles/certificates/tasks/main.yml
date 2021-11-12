@@ -1,6 +1,6 @@
 - name: 安装证书更新脚本(要求 kubernetes 版本>1.17)
   copy:
-    src: "update-kubeadm-cert.sh"
+    src: "{{ inventory_dir }}/roles/certificates/files/update-kubeadm-cert.sh"
     dest: "/usr/local/bin/"
     owner: root
     group: root
@@ -10,10 +10,11 @@
   file:
     name: "{{ kubernetes_etc_dir }}"
     state: directory
+    mode: "0644"
 
 - name: 配置临时文件 kubeadm-config-certs.yaml 用于生成证书
   template:
-    src: kubeadm-config.yaml.j2
+    src: "{{ inventory_dir }}/roles/certificates/templates/kubeadm-config.yaml.j2"
     dest: "{{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml"
     owner: "root"
     group: "root"
@@ -21,7 +22,9 @@
 
 - name: 删除 etcd 证书，添加新节点重新生成
   when: "groups['add_etcds']|length > 0"
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items:
     - "{{ etcd_cert_server_key }}"
     - "{{ etcd_cert_server }}"
@@ -32,13 +35,15 @@
 
 - name: 删除 kubernetest 证书和kubeconfig 认证文件，添加新节点重新生成
   when: "groups['add_masters']|length > 0"
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items:
     - "{{ apiserver_cert_key }}"
     - "{{ apiserver_cert }}"
-    - "{{kubernetes_etc_dir}}/admin.conf"
-    - "{{kubernetes_etc_dir}}/controller-manager.conf"
-    - "{{kubernetes_etc_dir}}/scheduler.conf"
+    - "{{ kubernetes_etc_dir }}/admin.conf"
+    - "{{ kubernetes_etc_dir }}/controller-manager.conf"
+    - "{{ kubernetes_etc_dir }}/scheduler.conf"
   tags:
     - add_masters
 
@@ -65,5 +70,4 @@
   include_tasks: _etcd.yml
 
 - name: 分发 kubernetes 证书到各 kubernetes 集群节点
-  when: "enbale_sync_k8s_cert | default(true)"
   include_tasks: _kubernetes.yml

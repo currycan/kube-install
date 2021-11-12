@@ -1,0 +1,15 @@
+- name: master 节点重新配置参数
+  when: "groups['add_masters']|length > 0"
+  systemd:
+    name: etcd
+    daemon_reload: yes
+    state: restart
+    enabled: yes
+
+- name: 新节点部署服务
+  when:
+    - "groups['add_masters']|length > 0"
+    - inventory_hostname in (groups['add_masters'] | difference(groups['delete_masters']) | unique )
+  include_role:
+    name: "{{ inventory_dir }}/roles/kubernetes"
+    tasks_from: k8s-setup/install/tasks/common/tools.yml

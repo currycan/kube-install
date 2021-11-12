@@ -4,7 +4,10 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   tasks:
   - name: 所有节点停止运行 kubernetes 和 container-runtime 各组件
-    systemd: name={{ item }} state=stopped enabled=no
+    systemd:
+      name: "{{ item }}"
+      state: stopped
+      enabled: no
     with_items:
       - kubelet
       - ipvsadm.service
@@ -21,21 +24,25 @@
     ignore_errors: true
 
   - name: 删除 kubernetes kubeconfig 文件
-    file: path="{{ item }}" state=absent
+    file:
+      path: "{{ item }}"
+      state: absent
     with_items:
       - "{{ kubernetes_etc_dir }}/kubelet.conf"
 
   - name: 删除所有 kubernetes 和 container-runtime 各组件运行数据文件和配置
-    file: path="{{ item }}" state=absent
+    file:
+      path: "{{ item }}"
+      state: absent
     with_items:
       - "{{ kubernetes_etc_dir }}/manifests/"
-      # - "{{ cni_etc_dir }}"
+      - "{{ cni_etc_dir }}"
       - "{{ kubelet_data_dir }}"
       - "{{ systemd_service_dir }}/kubelet.service.d/"
     ignore_errors: true
 
   - name: 删除 IP-in-IP tunnel
-    command: "modprobe -r ipip"
+    shell: "modprobe -r ipip"
 
   - name: 查找 blackhole 路由规则
     shell: "ip route | awk '/blackhole/ {print $2}'"

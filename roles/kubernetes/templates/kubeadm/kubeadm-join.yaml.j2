@@ -7,7 +7,7 @@ apiVersion: kubeadm.k8s.io/v1beta1
 kind: JoinConfiguration
 discovery:
   bootstrapToken:
-    apiServerEndpoint: "{%- if groups['kube_masters'] | length == 1 -%}{{ groups['masters'][0] }}:6443{%- else -%}{{ lb_apiserver_ip }}:{{ lb_secure_port }}{%- endif %}"
+    apiServerEndpoint: "{%- if groups['kube_masters'] | length == 1 -%}{{ groups['kube_masters'][0] }}:6443{%- else -%}{{ lb_apiserver_ip }}:{{ lb_secure_port }}{%- endif %}"
     token: {{ bootstrap_token }}
     unsafeSkipCAVerification: true
   timeout: 4m0s

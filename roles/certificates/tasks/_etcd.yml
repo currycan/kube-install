@@ -12,11 +12,14 @@
     - "{{ etcd_cert_healthcheck_client_key }}"
   register: slurp_etcd_certs
   run_once: true
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
 
 - block:
   - name: 创建 etcd 证书存放目录
-    file: path={{ etcd_pki_dir }} state=directory
+    file:
+      path: "{{ etcd_pki_dir }}"
+      state: directory
+      mode: 0644
 
   - name: 分发 etcd 相关证书到 etcd 节点
     copy:

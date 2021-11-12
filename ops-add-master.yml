@@ -1,43 +1,24 @@
 # add_masters
 - hosts:
-  - add_masters
-  become: true
-  gather_facts: true
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-  # 校验基础环境是否就绪，如：内核版本
-  - { role: initialize/check-environment }
-  # 时间校准
-  - { role: initialize/chrony, when: "groups['chrony']|length > 0" }
-  # 系统初始化
-  - { role: initialize/init }
-  # 安装容器运行时
-  - { role: container-runtime }
-  - { role: load-image }
-  # 二进制文件加载
-  - { role: cluster-ops/add/master }
-
-- hosts:
+  - kube_etcds
   - kube_cluster
   become: true
   gather_facts: true
-  # strategy: free
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  vars:
-    enable_add_node: true
-    enable_run_once: false
   roles:
-  # 创建证书
-  - { role: certificates/kubernetes }
-  - { role: certificates/kubeadm }
-  # kubernetes安装
-  - { role: k8s-setup, when: "inventory_hostname in (groups['add_masters'] | difference(groups['delete_masters']) | unique)" }
-  # 网络插件安装
-  - { role: k8s-network/calico/certificates, when: "container_network == 'calico' and datastore_type is defined and datastore_type == 'custom'" }
-  - { role: k8s-network/calico/install, when: "container_network == 'calico'" }
-  - { role: k8s-network/cilium, when: "container_network == 'cilium'" }
-  - { role: k8s-network/flannel, when: "container_network == 'flannel'" }
-  - { role: k8s-network/kubeovn, when: "container_network == 'kubeovn'" }
-  # helm 安装
-  - { role: k8s-helm/helm3, when: "helm_type == 'helm3'" }
-  - { role: k8s-helm/helm2/certificates, when: "helm_type == 'helm2'" }
+  - { role: prepare/kernel }
+  - { role: prepare/check-environment }
+  - { role: prepare/chrony, when: "groups['chrony']|length > 0" }
+  - { role: prepare/initialize }
+  - { role: prepare/kube-install }
+  - { role: container-runtime }
+  - { role: certificates }
+
+- hosts:
+  - add_masters
+  become: true
+  serial: 1
+  gather_facts: true
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+  - { role: cluster-ops/add/master }

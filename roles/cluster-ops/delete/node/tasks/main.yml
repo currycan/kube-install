@@ -2,7 +2,7 @@
   shell: >
     kubectl get ds -A | grep -v NAMESPACE | wc -l
   register: ds_pods_num
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
   run_once: true
 
 - set_fact: master_static_pods={{ ds_pods_num.stdout | int + 5 }}
@@ -14,7 +14,7 @@
     --ignore-daemonsets --force --delete-local-data
   with_items: "{{ groups['delete_nodes'] }}"
   register: set_drain
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
   until: set_drain.rc == 0
   retries: 10
   delay: "{{ retry_stagger }}"
@@ -35,7 +35,7 @@
     kubectl delete nodes {% if hostvars['' + item]['ansible_host'] is defined %}{{ hostvars['' + item]['ansible_host'] }}{% else %}{{ inventory_hostname }}{% endif %}
   with_items: "{{ groups['delete_nodes'] }}"
   register: delete_node
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
   until: delete_node.rc == 0
   retries: 10
   delay: "{{ retry_stagger }}"

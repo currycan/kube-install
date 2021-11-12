@@ -1,6 +1,7 @@
 - block:
   - name: 判断 gen_bootstrap_token 配置文件是否存在
-    stat: path="{{ k8s_pki_dir }}/token.csv"
+    stat:
+      path: "{{ k8s_pki_dir }}/token.csv"
     register: check_token_file
 
   - name: 判断 bootstrap_token 是否已经写入配置文件
@@ -29,7 +30,7 @@
         create: true
     when: (not check_token_file.stat.exists) or (token_presence.skipped is defined and token_presence.stdout.find('bootstrap_token') == -1)
   run_once: true
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
 
 - name: 获取 bootstrap token.csv文件
   slurp:
@@ -38,7 +39,7 @@
     - "{{ k8s_pki_dir }}/token.csv"
   register: slurp_token_file
   run_once: true
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
 
 - name: 所有 master 节点配置 bootstrap token.csv文件
   when: inventory_hostname in groups['kube_masters']

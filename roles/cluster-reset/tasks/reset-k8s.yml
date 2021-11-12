@@ -1,4 +1,4 @@
-- name: 所有节点停止运行 kubernetes 和 container-runtime 各组件
+- name: 所有节点停止运行 kubernetes
   systemd:
     name: "{{ item }}"
     state: stopped
@@ -9,7 +9,16 @@
     - containerd.service
     - docker.service
     - docker.socket
-  ignore_errors: true
+
+- name: 所有节点停止运行 docker 各组件
+  when: container_runtime == 'docker'
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  with_items:
+    - docker.service
+    - docker.socket
 
 - name: kubeadm reset 集群
   shell: >
@@ -18,10 +27,11 @@
   until: reset_cluster.rc == 0
   retries: 3
   delay: "{{ retry_stagger }}"
-  ignore_errors: true
 
 - name: 删除所有 kubernetes 和 container-runtime 各组件运行数据文件和配置
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items:
     - "{{ kubernetes_etc_dir }}"
     - "{{ cni_etc_dir }}"
@@ -36,14 +46,14 @@
     - "/etc/sysconfig/ipvsadm"
 
 - name: 删除 IP-in-IP tunnel
-  command: "modprobe -r ipip"
+  shell: "modprobe -r ipip"
 
 - name: 查找 blackhole 路由规则
   shell: "ip route | awk '/blackhole/ {print $2}'"
   register: find_blackhole
 
 - name: 删除 blackhole 路由规则
-  when: find_blackhole.stdout != ""
+  when: find_blackhole.stdout | length > 0
   shell: "ip route del {{ find_blackhole.stdout }}"
   ignore_errors: True
 
@@ -135,7 +145,9 @@
   - "{{ kubelet_data_dir }}/pods"
 
 - name: 删除运行时数据目录
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items:
     - "/var/run/kubernetes"
     - "/var/run/docker"
@@ -146,7 +158,7 @@
     - "/var/lib/dockershim"
     - "{{ docker_data_dir }}"
     - "{{ kubelet_data_dir }}"
-    - "{{ kube_proxy_data_dir}}"
+    - "{{ kube_proxy_data_dir }}"
   register: delete_set_taint
   until: delete_set_taint is succeeded
   retries: 3
@@ -159,7 +171,9 @@
     rm -rf {{ kubelet_data_dir }}
 
 - name: 确认删除 /var/lib/kubelet
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items: "{{ kubelet_data_dir }}"
 
 - name: 非 root 用户环境变量清理

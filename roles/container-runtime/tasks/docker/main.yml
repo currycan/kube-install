@@ -12,49 +12,45 @@
     system: yes
     groups: docker
 
+- name: 创建 docker 配置文件目录
+  file:
+    path: "{{ docker_etc_dir }}"
+    state: directory
+    mode: 0644
+
 - name: rpm 安装 docker
   shell: >-
     rpm -Uvh --nodeps --force {{ cache_dir }}/docker/*.rpm
 
 - name: 安装 docker 命令补全工具、 docker orphan 清理工具、docker-tag 工具
   copy:
-    src: "{{ item.file }}"
-    dest: "{{ item.dir }}"
+    src: "{{ inventory_dir }}/roles/container-runtime/files/{{ item.src }}"
+    dest: "{{ item.dest }}"
     mode: "{{ item.mode }}"
   with_items:
-    - {file: "docker-compose", dir: "/etc/bash_completion.d/", mode: "0644"}
-    - {file: "docker", dir: "/etc/bash_completion.d/", mode: "0644"}
-    - {file: "cleanup-docker-orphans.sh", dir: "/usr/local/bin/cleanup-docker-orphans", mode: "0755"}
-    - {file: "docker-tag", dir: "/usr/local/bin", mode: "0755"}
-    - {file: "limit-docker.slice", dir: "/etc/systemd/system/limit-docker.slice", mode: "0644"}
+    - { src: "docker-compose", dest: "/etc/bash_completion.d/", mode: "0644" }
+    - { src: "docker", dest: "/etc/bash_completion.d/", mode: "0644" }
+    - { src: "cleanup-docker-orphans.sh", dest: "/usr/local/bin/cleanup-docker-orphans", mode: "0755" }
+    - { src: "docker-tag", dest: "/usr/local/bin", mode: "0755" }
+    - { src: "limit-docker.slice", dest: "{{ systemd_service_dir }}", mode: "0644" }
+
+- name: 配置 Docker engine
+  template:
+    src: "{{ inventory_dir }}/roles/container-runtime/templates/docker/{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - { src: "docker.service", dest: "{{ systemd_service_dir }}/docker.service" }
+    - { src: "docker.socket", dest: "{{ systemd_service_dir }}/docker.socket" }
+    - { src: "daemon.json", dest: "{{ docker_etc_dir }}/daemon.json" }
 
 - name: docker 命令自动补全
   shell: >
     source /etc/bash_completion.d/docker
   args:
     executable: /bin/bash
-
-- name: 配置 Docker engine service 文件
-  template:
-    src: "docker/{{ item }}.j2"
-    dest: "{{ systemd_service_dir }}/{{ item }}"
-    owner: root
-    group: root
-    mode: 0644
-  with_items:
-    - docker.service
-    - docker.socket
-  register: change_system_service
-  # notify: 确认 docker 运行状态
-
-- name: 创建 docker 配置文件目录
-  file: path="{{ docker_etc_dir }}" state=directory
-
-- name: 配置 daemon.json
-  template:
-    src: "docker/daemon.json.j2"
-    dest: "{{ docker_etc_dir }}/daemon.json"
-  # notify: 确认 docker 运行状态
 
 - name: flush-iptables
   shell: >
@@ -66,7 +62,6 @@
     iptables -P FORWARD ACCEPT
 
 - name: 启动 Docker socket
-  when: change_system_service is succeeded
   systemd:
     name: docker.socket
     daemon_reload: yes
@@ -99,18 +94,8 @@
   with_items:
   - "{{ normal_user }}"
 
-- name: 添加非 root 用户命令执行目录环境变量
-  when: 'item.stdout != ""'
-  lineinfile:
-    dest: "{{ item.stdout }}/.bash_profile"
-    state: present
-    regexp: "/usr/local/bin"
-    line: export PATH="/usr/local/bin:$PATH"
-  with_items:
-  - "{{ user_results['results'] }}"
-
 - name: 添加非 root 用户 docker 命令权限
-  when: 'item.stdout != ""'
+  when: 'item.stdout | length > 0'
   shell: >
     usermod -aG docker {{ item.item }}
   with_items:

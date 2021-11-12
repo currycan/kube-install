@@ -2,6 +2,7 @@
   file:
     name: "{{ k8s_pki_dir }}"
     state: directory
+    mode: 0644
 
 - name: 获取 kubernetes 所有节点 ca 证书
   slurp:
@@ -42,9 +43,9 @@
     - "{{ front_client_key }}"
     - "{{ sa_public_key }}"
     - "{{ sa_private_key }}"
-    - "{{kubernetes_etc_dir}}/admin.conf"
-    - "{{kubernetes_etc_dir}}/controller-manager.conf"
-    - "{{kubernetes_etc_dir}}/scheduler.conf"
+    - "{{ kubernetes_etc_dir }}/admin.conf"
+    - "{{ kubernetes_etc_dir }}/controller-manager.conf"
+    - "{{ kubernetes_etc_dir }}/scheduler.conf"
   register: slurp_kubernetes_master_certs
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"

@@ -11,7 +11,6 @@ kube_master_external_domain:
 # kubelet 参数
 kubelet_max_pods: 128
 kube_reserved_enabled: true
-# TODO: 1.21 版本 配置系统资源预留会报错！！！！
 system_reserved_enabled: true
 
 feature_gates:
@@ -55,7 +54,7 @@ apiserver_extra_args:
   audit-log-maxbackup: "10"
   audit-log-maxsize: "100"
   audit-log-truncate-enabled: "true"
-  audit-policy-file: "{{kubernetes_etc_dir}}/audit/policy.yaml"
+  audit-policy-file: "{{ kubernetes_etc_dir }}/audit/policy.yaml"
   # 默认是 true，设置成false,kubeadm join 认证不过
   # anonymous-auth: "false"
   enable-aggregator-routing: "true"

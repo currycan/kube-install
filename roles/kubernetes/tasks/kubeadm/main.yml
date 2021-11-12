@@ -11,12 +11,12 @@
     set_fact:
       bootstrap_token: "{{ get_bootstrap_token.stdout }}"
   run_once: true
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
 
 - name: 所有 kube_cluster 节点渲染 kubeadm 的配置文件
   template:
     src: >-
-      {% if inventory_hostname == groups['masters'][0] -%}
+      {% if inventory_hostname == groups['kube_masters'][0] -%}
       kubeadm/kubeadm-controlplane-init.yaml.j2
       {%- elif inventory_hostname in groups['kube_masters'] -%}
       kubeadm/kubeadm-controlplane-join.yaml.j2

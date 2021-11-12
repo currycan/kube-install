@@ -18,6 +18,7 @@
       file:
         name: "{{ lb_config_dir }}"
         state: directory
+        mode: 0644
 
     - name: 确认没有运行其他负载均衡器
       when: lb_mode == "slb"

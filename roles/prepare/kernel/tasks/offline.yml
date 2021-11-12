@@ -1,5 +1,7 @@
 - block:
-  - debug: msg="rpm 安装内核，可能需要一定时间。。"
+  - name: rpm install
+    debug:
+      msg: "rpm 安装内核，可能需要一定时间。。"
   - name: 安装内核
     shell: >-
       rpm -Uvh --nodeps --force {{ cache_dir }}/kernel/*.rpm

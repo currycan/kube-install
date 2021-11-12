@@ -2,21 +2,16 @@
   shell: >-
     rpm -Uvh --nodeps --force {{ cache_dir }}/containerd/*.rpm
 
-- name: 安装 cni
+- name: 安装 cni 和 crictl
   copy:
-    src: "{{ cache_dir }}/binary/containerd/"
-    dest: "/"
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
     owner: root
     group: root
     mode: 0755
-
-- name: 安装 crictl
-  copy:
-    src: "{{ cache_dir }}/binary/crictl/"
-    dest: "/usr/bin/"
-    owner: root
-    group: root
-    mode: 0755
+  with_items:
+    - { src: "{{ cache_dir }}/binary/containerd/", dest: "/"}
+    - { src: "{{ cache_dir }}/binary/crictl/", dest: "/usr/bin/"}
 
 - name: crictl 命令自动补全
   shell: >
@@ -29,36 +24,23 @@
   file:
     path: "{{ item }}"
     state: directory
+    mode: 0644
   with_items:
     - "{{ containerd_etc_dir }}"
     - "{{ cni_etc_dir }}"
 
-- name: 配置 crictl 客户端
+- name: 配置 containerd
+  when: item.enable | bool
   template:
-    src: "containerd/crictl.yaml.j2"
-    dest: /etc/crictl.yaml
-    mode: 644
-
-# 暂时发现配置后会出现:runtime/cgo: pthread_create failed: Resource temporarily unavailable 报错，可能配置有问题！！！
-- name: 配置 containerd 配置文件
-  when: container_runtime == 'containerd'
-  template:
-    src: "containerd/config.toml.j2"
-    dest: "{{ containerd_etc_dir }}/config.toml"
-    mode: 644
-  # notify: 确认 containerd 运行状态
-
-- name: 配置 containerd service 文件
-  template:
-    src: "containerd/{{ item }}.j2"
-    dest: "{{ systemd_service_dir }}/{{ item }}"
-    owner: root
-    group: root
-    mode: 0644
+    src: "{{ inventory_dir }}/roles/container-runtime/templates/containerd/{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
   with_items:
-    - containerd.service
-  register: change_system_service
-  # notify: 确认 containerd 运行状态
+    - { src: "containerd.service", dest: "{{ systemd_service_dir }}/containerd.service", enable: true  }
+    - { src: "crictl.yaml", dest: "/etc/crictl.yaml", enable: true }
+    - { src: "config.toml", dest: "{{ containerd_etc_dir }}/config.toml", enable: "{%- if container_runtime=='containerd' -%}true{% else %}false{%- endif -%}" }
 
 - name: 启动 containerd，并设置开机启动
   systemd:

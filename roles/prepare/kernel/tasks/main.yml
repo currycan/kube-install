@@ -16,7 +16,9 @@
   set_fact:
     fact_kernel_version: "{{ get_kernel_version.stdout.split('.el7')[0] }}"
 
-- debug: var=fact_kernel_version
+- name: 获取内核参数
+  debug:
+    var: get_kernel_version.stdout
 
 - include_tasks: online.yml
   when: install_online is defined and install_online | bool

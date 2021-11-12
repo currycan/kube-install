@@ -1,5 +1,7 @@
 - name:  卸载 ntp
-  package: name=ntp state=absent
+  package:
+    name: ntp
+    state: absent
 
 - name: rpm 安装 chrony
   shell: >-
@@ -7,7 +9,10 @@
 
 - block:
   - name: 配置 chrony server
-    template: src=server-centos.conf.j2 dest=/etc/chrony.conf
+    template:
+      src: server-centos.conf.j2
+      dest: /etc/chrony.conf
+      mode: 0644
 
   - name: 启动 chrony server
     service: name=chronyd state=restarted enabled=yes
@@ -15,10 +20,16 @@
 
 - block:
   - name: 配置 chrony client
-    template: src=client-centos.conf.j2 dest=/etc/chrony.conf
+    template:
+      src: client-centos.conf.j2
+      dest: /etc/chrony.conf
+      mode: 0644
     when: 'ansible_distribution in ["CentOS","RedHat","Amazon"]'
 
   - name: 启动 chrony client
-    service: name=chronyd state=restarted enabled=yes
+    service:
+      name: chronyd
+      state: restarted
+      enabled: yes
     when: 'ansible_distribution in ["CentOS","RedHat","Amazon"]'
   when: 'inventory_hostname != groups.chrony[0]'

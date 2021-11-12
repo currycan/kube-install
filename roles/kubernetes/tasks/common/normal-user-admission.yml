@@ -5,8 +5,11 @@
   - "{{ normal_user }}"
 
 - name: 创建 $HOME/.kube/config 配置清单目录
-  when: 'item.stdout != ""'
-  file: name="{{ item.stdout }}/.kube/" state=directory
+  when: 'item.stdout | length > 0'
+  file:
+    name: "{{ item.stdout }}/.kube/"
+    state: directory
+    mode: 0600
   with_items:
     - "{{ user_results['results'] }}"
 
@@ -15,10 +18,10 @@
     src: "{{ kubernetes_etc_dir }}/admin.conf"
   register: slurp_kubeconfig
   run_once: true
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
 
 - name: 非 root 用户配置 $HOME/.kube/config
-  when: 'item.stdout != ""'
+  when: 'item.stdout | length > 0'
   copy:
     content: "{{ slurp_kubeconfig.content | b64decode }}"
     dest: "{{ item.stdout }}/.kube/config"
@@ -30,7 +33,7 @@
     - "{{ user_results['results'] }}"
 
 - name: 修改文件目录权限
-  when: 'item.stdout != ""'
+  when: 'item.stdout | length > 0'
   file:
     path: "{{ item.stdout }}/.kube/"
     state: directory
@@ -42,7 +45,7 @@
     - "{{ user_results['results'] }}"
 
 - name: 添加非 root 用户 kubectl 命令自动补全
-  when: 'item.stdout != ""'
+  when: 'item.stdout | length > 0'
   lineinfile:
     dest: "{{ item.stdout }}/.bashrc"
     state: present

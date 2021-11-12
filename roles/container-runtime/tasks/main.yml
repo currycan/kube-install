@@ -19,9 +19,10 @@
       net.ipv4.conf.all.arp_ignore=1
       net.ipv4.conf.all.arp_announce=2
     dest: /etc/sysctl.d/99-cri.conf
+    mode: 0644
 
 - name: sysctl 加载 bridge-netfilter 和 ip-forward 系统变量
-  command: "sysctl -p /etc/sysctl.d/99-cri.conf"
+  shell: "sysctl -p /etc/sysctl.d/99-cri.conf"
 
 - include_tasks: "containerd/main.yml"
   when: inventory_hostname in ((groups['deploy'] + groups['kube_cluster'])| unique)

@@ -22,5 +22,5 @@
   #     kubectl apply -f "{{ kubernetes_etc_dir }}/kubelet-rubber-stamp"
   #   environment:
   #     KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
-  delegate_to: "{{ groups['masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
   run_once: true

@@ -104,7 +104,7 @@
       - "{{ kubernetes_etc_dir }}/admin.conf"
     register: slurp_kubeconfig
     run_once: true
-    delegate_to: "{{ groups['masters'][0] }}"
+    delegate_to: "{{ groups['kube_masters'][0] }}"
 
   - name: 配置 kubeconfig admin 文件到 $HOME/.kube/config
     copy:

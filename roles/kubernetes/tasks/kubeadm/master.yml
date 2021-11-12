@@ -1,6 +1,9 @@
 - block:
   - name: 创建 master 节点各组件所需目录
-    file: path={{ item }} state=directory
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: 0644
     with_items:
     - "{{ kubernetes_etc_dir }}/audit"
     - "{{ kubernetes_log_dir }}/audit"
@@ -13,9 +16,9 @@
 
   - name: 获取 encryption config secret
     shell: >
-      cat "{{kubernetes_etc_dir}}/encryption_config_secret.yml" | grep encryption_config_secret | cut -d ":" -f 2 | sed 's/^[ \t]*//g'
+      cat "{{ kubernetes_etc_dir }}/encryption_config_secret.yml" | grep encryption_config_secret | cut -d ":" -f 2 | sed 's/^[ \t]*//g'
     register: get_encryption_config_secret
-    delegate_to: "{{ groups['masters'][0] }}"
+    delegate_to: "{{ groups['kube_masters'][0] }}"
 
   - name: 设置 encryption_config_secret 变量
     set_fact:
@@ -35,7 +38,7 @@
 
   - name: 获取第一个 master 节点各组件状态
     when:
-      - inventory_hostname == groups['masters'][0]
+      - inventory_hostname == groups['kube_masters'][0]
     shell: >
       cs_running_num=0;
       for cs in {kube-apiserver,kube-controller-manager,kube-scheduler};
@@ -78,7 +81,7 @@
 
     when: 'cs_statuses_result.stdout is defined and cs_statuses_result.stdout != "3"'
     run_once: true
-    delegate_to: "{{ groups['masters'][0] }}"
+    delegate_to: "{{ groups['kube_masters'][0] }}"
 
   - name: 获取其他 master 节点各组件状态
     shell: >
@@ -126,5 +129,5 @@
     - include_tasks: common/check_master_status.yml
     when:
       - 'get_nodes_result.stdout != "1"'
-      - inventory_hostname != groups['masters'][0]
+      - inventory_hostname != groups['kube_masters'][0]
   when: "inventory_hostname in groups['kube_masters']"

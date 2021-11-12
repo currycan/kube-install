@@ -1,6 +1,9 @@
 - name: master 节点停止运行三大组件
   when: inventory_hostname in groups['kube_masters']
-  systemd: name={{ item }} state=stopped enabled=no
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
   with_items:
     - kube-scheduler
     - kube-controller-manager
@@ -8,7 +11,10 @@
   ignore_errors: true
 
 - name: 所有节点停止运行 kubernetes 和 container-runtime 各组件
-  systemd: name={{ item }} state=stopped enabled=no
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
   with_items:
     - kubelet
     - kube-proxy
@@ -16,7 +22,9 @@
   ignore_errors: true
 
 - name: 删除所有 kubernetes 和 container-runtime 各组件运行数据文件和配置
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items:
     - "{{ manifest_dir }}"
     - "{{ kubernetes_log_dir }}"

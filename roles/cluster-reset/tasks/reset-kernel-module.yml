@@ -1,5 +1,8 @@
 - name: 停用systemd自动加载模块服务
-  systemd: name=systemd-modules-load state=stopped enabled=no
+  systemd:
+    name: systemd-modules-load
+    state: stopped
+    enabled: no
   ignore_errors: True
 
 - name: 删除内核模块开机加载配置
@@ -14,15 +17,17 @@
     set_fact_kernel_version: "{{ get_kernel_version.stdout.split('-')[0] }}"
 
 - name: 设置 nf_conntrack 模块名
-  set_fact: NF_CONNTRACK="nf_conntrack"
   when: "set_fact_kernel_version is version('4.19', '>=')"
+  set_fact: nf_conntrack="nf_conntrack"
 
 - name: 设置 nf_conntrack_ipv4 模块名
-  set_fact: NF_CONNTRACK="nf_conntrack_ipv4"
   when: "set_fact_kernel_version is version('4.19', '<')"
+  set_fact: nf_conntrack="nf_conntrack_ipv4"
 
 - name: 卸载已加载的内核模块
-  modprobe: name={{ item }} state=absent
+  modprobe:
+    name: "{{ item }}"
+    state: absent
   with_items:
     - br_netfilter
     - ip_vs
@@ -38,7 +43,7 @@
     - ip_vs_nq
     - ip_vs_sed
     - ip_vs_ftp
-    - "{{ NF_CONNTRACK }}"
+    - "{{ nf_conntrack }}"
     - sunrpc
   ignore_errors: true
 
