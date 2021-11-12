@@ -48,15 +48,10 @@
     - add_masters
 
 - block:
-  - name: 生成证书和 kubeconfig 文件
+  - name: "{{ groups['kube_masters'][0] }} 节点生成证书和 kubeconfig 文件"
     shell: >
-      if [ {{ groups['add_etcds']|length }} -gt > 0 ];then
-        kubeadm init phase certs etcd-peer --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml;
-        kubeadm init phase certs etcd-server --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml;
-      else
-        kubeadm init phase certs all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml;
-        kubeadm init phase kubeconfig all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml
-      fi
+      kubeadm init phase certs all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml;
+      kubeadm init phase kubeconfig all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml
 
   - name: 更新证书 10 年有效期
     shell: >

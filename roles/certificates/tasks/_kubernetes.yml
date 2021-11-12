@@ -62,3 +62,10 @@
   when:
     - inventory_hostname in groups['kube_masters']
     - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
+
+- name: 所有 master 节点生成 kubelet.conf 文件
+  when:
+    - inventory_hostname in groups['kube_masters']
+    - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
+  shell: >
+    kubeadm init phase kubeconfig kubelet --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml

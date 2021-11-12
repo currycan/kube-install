@@ -98,7 +98,9 @@
         systemctl stop kubelet.service;
         rm -f {{ kubelet_data_dir }}/cpu_manager_state;
         rm -f {{ kubelet_data_dir }}/memory_manager_state;
-        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml \
+        --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests \
+        --ignore-preflight-errors=FileAvailable--etc-kubernetes-kubelet.conf
       register: master_join_rslt
       ignore_errors: true
 

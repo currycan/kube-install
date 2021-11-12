@@ -7,8 +7,6 @@
     - kubelet
     - ipvsadm.service
     - containerd.service
-    - docker.service
-    - docker.socket
 
 - name: 所有节点停止运行 docker 各组件
   when: container_runtime == 'docker'

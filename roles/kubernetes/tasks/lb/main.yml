@@ -63,6 +63,7 @@
         mode: "0644"
       with_items:
         - { src: "kubelet/00-kubelet-override.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf" }
+        - { src: "kubelet/kubelet-override-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
         - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
 
     - name: bootstrap lb 服务
@@ -81,7 +82,7 @@
         nc -z -w 3 127.0.0.1 {{ lb_secure_port }};
       register: lb_status
       until: lb_status.rc == 0
-      retries: 5
+      retries: 8
       delay: 15
 
     - name: 以轮询的方式等待 keepalived 运行完成
@@ -99,10 +100,13 @@
         state: stopped
         enabled: yes
 
-    - name: 移除临时 kubelet.conf 文件
+    - name: 移除 kubelet 临时配置文件
       file:
-        name: "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf"
+        name: "{{ item }}"
         state: absent
+      with_items:
+        - "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf"
+        - "{{ kubelet_data_dir }}/config.yaml"
     when: 'lb_statuses_result.stdout != "2"'
   when:
   - groups['kube_masters'] | length > 1
