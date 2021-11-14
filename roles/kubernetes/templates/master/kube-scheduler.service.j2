@@ -1,0 +1,35 @@
+[Unit]
+Description=Kubernetes Scheduler
+Documentation=https://github.com/kubernetes/kubernetes
+# After=kube-apiserver.service
+# Requires=kube-apiserver.service
+
+[Service]
+ExecStart=/usr/bin/kube-scheduler \
+  --bind-address={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
+  --feature-gates={%- if feature_gates != None -%}{% for k,v in feature_gates.items() %}{{ k }}={{ v | lower }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %} \
+  --kube-api-burst=100 \
+  --kube-api-qps=100 \
+  --kubeconfig={{kubernetes_etc_dir}}/scheduler.conf \
+  --leader-elect=true \
+  --log-dir={{ kubernetes_log_dir }}/kube-scheduler \
+  --logtostderr=false \
+  --profiling=false \
+  --alsologtostderr=true \
+  --authentication-kubeconfig={{kubernetes_etc_dir}}/scheduler.conf \
+  --authorization-kubeconfig={{kubernetes_etc_dir}}/scheduler.conf \
+  --requestheader-allowed-names= \
+  --requestheader-client-ca-file={{ front_ca }} \
+  --tls-cert-file={{ scheduler_cert }} \
+  --tls-private-key-file={{ scheduler_cert_key }} \
+  --client-ca-file={{ kubernetes_ca }} \
+  --v=2
+
+LimitNOFILE=65536
+Restart=always
+RestartSec=3
+StartLimitInterval=0
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

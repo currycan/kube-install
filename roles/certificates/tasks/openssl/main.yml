@@ -1,0 +1,24 @@
+
+- block:
+  - name: 配置 etcd 证书相关参数
+    set_fact:
+      certs: "{{ openssl_etcd_certs }}"
+
+  - name: 创建 etcd 相关证书
+    include_tasks: "_create.yml"
+
+  - name: 配置 kubernetes master 证书相关参数
+    set_fact:
+      certs: "{{ openssl_master_certs }}"
+
+  - name: 创建 kubernetes master 节点相关证书
+    include_tasks: "_create.yml"
+  run_once: true
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+
+- name: 配置 kubernetes worker 证书相关参数
+  set_fact:
+    certs: "{{ openssl_worker_certs }}"
+
+- name: 创建 kubernetes worker 节点相关证书
+  include_tasks: "_create.yml"

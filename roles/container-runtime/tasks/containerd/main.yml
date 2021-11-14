@@ -1,8 +1,9 @@
 - name: rpm 安装 containerd
+  when: install_way != 'binary'
   shell: >-
     rpm -Uvh --nodeps --force {{ cache_dir }}/containerd/*.rpm
 
-- name: 安装 cni 和 crictl
+- name: 二进制安装 containerd、cni 和 crictl
   copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -11,7 +12,7 @@
     mode: 0755
   with_items:
     - { src: "{{ cache_dir }}/binary/containerd/", dest: "/"}
-    - { src: "{{ cache_dir }}/binary/crictl/", dest: "/usr/bin/"}
+    - { src: "{{ cache_dir }}/binary/crictl/", dest: "/usr/local/bin/"}
 
 - name: crictl 命令自动补全
   shell: >
@@ -61,15 +62,15 @@
   retries: 2
   delay: "{{ retry_stagger }}"
 
-- name: 获取其他 cni 配置文件
-  find:
-    paths: "{{ cni_etc_dir }}"
-    patterns: "*.conflist,*.conf"
-    # use_regex: true
-  register: find_files_to_delete
+# - name: 获取其他 cni 配置文件
+#   find:
+#     paths: "{{ cni_etc_dir }}"
+#     patterns: "*.conflist,*.conf"
+#     # use_regex: true
+#   register: find_files_to_delete
 
-- name: 删除其他 cni 配置文件
-  file:
-    path: "{{ item.path }}"
-    state: absent
-  with_items: "{{ find_files_to_delete.files }}"
+# - name: 删除其他 cni 配置文件
+#   file:
+#     path: "{{ item.path }}"
+#     state: absent
+#   with_items: "{{ find_files_to_delete.files }}"

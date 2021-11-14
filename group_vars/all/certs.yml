@@ -1,33 +1,63 @@
-# etcd certificates
-etcd_ca: "{{ etcd_pki_dir }}/ca.crt"
-etcd_ca_key: "{{ etcd_pki_dir }}/ca.key"
-etcd_cert_server: "{{ etcd_pki_dir }}/server.crt"
-etcd_cert_server_key: "{{ etcd_pki_dir }}/server.key"
-etcd_cert_client: "{{ etcd_pki_dir }}/client.crt"
-etcd_cert_client_key: "{{ etcd_pki_dir }}/client.key"
-etcd_cert_peer: "{{ etcd_pki_dir }}/peer.crt"
-etcd_cert_peer_key: "{{ etcd_pki_dir }}/peer.key"
-etcd_cert_apiserver_server: "{{ k8s_pki_dir }}/apiserver-etcd-client.crt"
-etcd_cert_apiserver_server_key: "{{ k8s_pki_dir }}/apiserver-etcd-client.key"
-etcd_cert_healthcheck_client: "{{ etcd_pki_dir }}/healthcheck-client.crt"
-etcd_cert_healthcheck_client_key: "{{ etcd_pki_dir }}/healthcheck-client.key"
+# certs hosts
+master_cert_hosts: "{%- if groups['kube_masters'] | length > 1 -%}{{ vip_address }},{%- endif %}{% for host in groups['kube_masters'] %}{{ hostvars[host]['ansible_' + iface].ipv4.address }}{% if not loop.last %},{% endif %}{% endfor %},{% for host in groups['kube_masters']%}{{ hostvars[host].ansible_hostname }}{% if not loop.last %},{% endif %}{% endfor %}"
 
+etcd_cert_hosts: "{% for host in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique) %}{{ hostvars[host]['ansible_' + iface].ipv4.address }}{% if not loop.last %},{% endif %}{% endfor %},{% for host in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique) %}{{ hostvars[host].ansible_hostname }}{% if not loop.last %},{% endif %}{% endfor %},{{ etcd_domain_name }},127.0.0.1,localhost"
+
+apiserver_hosts: "{{ master_cert_hosts }},{{ api_service_ip }},kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.default.svc.{{ cluster_domain_name }},*.master.kubernetes.node,127.0.0.1,localhost"
+
+# certs config
+cert_key_algo: rsa
+cert_key_size: 2048
+cert_info_country: CN
+cert_info_state: ShangHai
+cert_info_locality: ShangHai
+cert_info_org_uit: kubernetes
+cert_info_expiry: 87600h
+
+# kubernetes证书过期时间（天）
+certs_expired: 3650
+# kubernetes根证书过期时间（天）
+ca_certs_expired: 36500
+
+# 配置文件
+etcd_openssl_cnf: "{{ k8s_pki_dir }}/etcd-openssl.cnf"
+kube_openssl_cnf: "{{ k8s_pki_dir }}/kube-openssl.cnf"
+cfssl_ca_config: "{{ k8s_pki_dir }}/ca-config.json"
+
+# etcd certificates
+etcd_ca: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}ca.pem{% else %}ca.crt{%- endif -%}"
+etcd_ca_key: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}ca-key.pem{% else %}ca.key{%- endif -%}"
+etcd_cert_server: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}server.pem{% else %}server.crt{%- endif -%}"
+etcd_cert_server_key: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}server-key.pem{% else %}server.key{%- endif -%}"
+etcd_cert_client: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}client.pem{% else %}client.crt{%- endif -%}"
+etcd_cert_client_key: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}client-key.pem{% else %}client.key{%- endif -%}"
+etcd_cert_peer: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}peer.pem{% else %}peer.crt{%- endif -%}"
+etcd_cert_peer_key: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}peer-key.pem{% else %}peer.key{%- endif -%}"
+etcd_cert_apiserver_server: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-etcd-client.pem{% else %}apiserver-etcd-client.crt{%- endif -%}"
+etcd_cert_apiserver_server_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-etcd-client-key.pem{% else %}apiserver-etcd-client.key{%- endif -%}"
+etcd_cert_healthcheck_client: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}healthcheck-client.pem{% else %}healthcheck-client.crt{%- endif -%}"
+etcd_cert_healthcheck_client_key: "{{ etcd_pki_dir }}/{%- if enable_cfssl_certs | bool -%}healthcheck-client-key.pem{% else %}healthcheck-client.key{%- endif -%}"
 # kubernetes certificates master nodes
-kubernetes_ca: "{{ k8s_pki_dir }}/ca.crt"
-kubernetes_ca_key: "{{ k8s_pki_dir }}/ca.key"
-apiserver_cert: "{{ k8s_pki_dir }}/apiserver.crt"
-apiserver_cert_key: "{{ k8s_pki_dir }}/apiserver.key"
-apiserver_kubelet_cert: "{{ k8s_pki_dir }}/apiserver-kubelet-client.crt"
-apiserver_kubelet_cert_key: "{{ k8s_pki_dir }}/apiserver-kubelet-client.key"
-controller_cert_manager: "{{ k8s_pki_dir }}/kube-controller-manager.crt"
-controller_cert_manager_key: "{{ k8s_pki_dir }}/kube-controller-manager.key"
-scheduler_cert: "{{ k8s_pki_dir }}/kube-scheduler.crt"
-scheduler_cert_key: "{{ k8s_pki_dir }}/kube-scheduler.key"
-front_ca: "{{ k8s_pki_dir }}/front-proxy-ca.crt"
-front_ca_key: "{{ k8s_pki_dir }}/front-proxy-ca.key"
-front_client: "{{ k8s_pki_dir }}/front-proxy-client.crt"
-front_client_key: "{{ k8s_pki_dir }}/front-proxy-client.key"
-admin: "{{ k8s_pki_dir }}/admin.crt"
-admin_key: "{{ k8s_pki_dir }}/admin.key"
+kubernetes_ca: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}ca.pem{% else %}ca.crt{%- endif -%}"
+kubernetes_ca_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}ca-key.pem{% else %}ca.key{%- endif -%}"
+apiserver_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver.pem{% else %}apiserver.crt{%- endif -%}"
+apiserver_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-key.pem{% else %}apiserver.key{%- endif -%}"
+apiserver_kubelet_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-kubelet-client.pem{% else %}apiserver-kubelet-client.crt{%- endif -%}"
+apiserver_kubelet_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-kubelet-client-key.pem{% else %}apiserver-kubelet-client.key{%- endif -%}"
+controller_cert_manager: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-controller-manager.pem{% else %}kube-controller-manager.crt{%- endif -%}"
+controller_cert_manager_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-controller-manager-key.pem{% else %}kube-controller-manager.key{%- endif -%}"
+scheduler_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-scheduler.pem{% else %}kube-scheduler.crt{%- endif -%}"
+scheduler_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-scheduler-key.pem{% else %}kube-scheduler.key{%- endif -%}"
+front_ca: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}front-proxy-ca.pem{% else %}front-proxy-ca.crt{%- endif -%}"
+front_ca_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}front-proxy-ca-key.pem{% else %}front-proxy-ca.key{%- endif -%}"
+front_client: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}front-proxy-client.pem{% else %}front-proxy-client.crt{%- endif -%}"
+front_client_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}front-proxy-client-key.pem{% else %}front-proxy-client.key{%- endif -%}"
+admin: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}admin.pem{% else %}admin.crt{%- endif -%}"
+admin_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}admin-key.pem{% else %}admin.key{%- endif -%}"
 sa_public_key: "{{ k8s_pki_dir }}/sa.pub"
 sa_private_key: "{{ k8s_pki_dir }}/sa.key"
+# kubernetes certificates worker nodes
+kubelet_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kubelet.pem{% else %}kubelet.crt{%- endif -%}"
+kubelet_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kubelet-key.pem{% else %}kubelet.key{%- endif -%}"
+kube_proxy_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-proxy.pem{% else %}kube-proxy.crt{%- endif -%}"
+kube_proxy_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-proxy-key.pem{% else %}kube-proxy.key{%- endif -%}"

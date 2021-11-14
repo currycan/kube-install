@@ -25,10 +25,17 @@
     - name: bootstrap_token 写入独立配置文件
       blockinfile:
         path: "{{ k8s_pki_dir }}/token.csv"
+        marker: ""
         block: |
-          bootstrap_token: {{ bootstrap_token }}
+          {{ bootstrap_token }},kubelet-bootstrap,10001,"system:kubelet-bootstrap"
         create: true
-    when: (not check_token_file.stat.exists) or (token_presence.skipped is defined and token_presence.stdout.find('bootstrap_token') == -1)
+
+    - name: 删除 blank lines blockinfile
+      lineinfile :
+        path: "{{ k8s_pki_dir }}/token.csv"
+        state: absent
+        regexp: '^$'
+    when: (not check_token_file.stat.exists) or (token_presence.skipped is defined and token_presence.stdout.find('kubelet-bootstrap') == -1)
   run_once: true
   delegate_to: "{{ groups['kube_masters'][0] }}"
 

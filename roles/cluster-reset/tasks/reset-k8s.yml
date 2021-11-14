@@ -1,22 +1,19 @@
-- name: 所有节点停止运行 kubernetes
+- name: 所有节点停止运行相关组件
   systemd:
     name: "{{ item }}"
     state: stopped
     enabled: no
   with_items:
+    - kube-apiserver.service
+    - kube-controller-manager.service
+    - kube-scheduler.service
     - kubelet
     - ipvsadm.service
+    - kube-proxy
     - containerd.service
-
-- name: 所有节点停止运行 docker 各组件
-  when: container_runtime == 'docker'
-  systemd:
-    name: "{{ item }}"
-    state: stopped
-    enabled: no
-  with_items:
     - docker.service
     - docker.socket
+  ignore_errors: true
 
 - name: kubeadm reset 集群
   shell: >

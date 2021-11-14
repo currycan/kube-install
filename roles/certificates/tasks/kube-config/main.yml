@@ -1,0 +1,51 @@
+- name: 生成 bootstrap token
+  include_tasks: common/gen_bootstrap_token.yml
+
+- block:
+  - name: 获取 bootstrap_token
+    shell: >
+      cat "{{ k8s_pki_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1
+    register: get_bootstrap_token
+
+  - name: 设置 bootstrap_token 变量
+    set_fact:
+      bootstrap_token: "{{ get_bootstrap_token.stdout }}"
+  delegate_to: "{{ groups['kube_masters'][0] }}"
+
+- block:
+  - name: master 节点
+    block:
+    - name: 判断 master 节点三大组件的 kubeconfig 文件是否存在
+      stat:
+        path: "{{ item.path }}"
+      with_items: "{{ kube_config.contexts.master }}"
+      register: master_kubeconfig_files
+
+    - name: 创建 master 节点三大组件 kubeconfig 文件
+      when: not item.stat.exists
+      include_tasks: "_create.yml"
+      with_items: "{{ master_kubeconfig_files['results'] }}"
+    when: inventory_hostname in groups['kube_masters']
+
+  - name: 所有 kube cluster 节点
+    block:
+    - name: 判断 kubelet 和 kube-proxy 组件的 kubeconfig 文件是否存在
+      stat:
+        path: "{{ item.path }}"
+      with_items: "{{ kube_config.contexts.all }}"
+      register: all_kubeconfig_files
+
+    - name: 创建 kubelet 和 kube-proxy 组件的 kubeconfig 文件
+      include_tasks: "_create.yml"
+      with_items: "{{ all_kubeconfig_files['results'] }}"
+      when: not item.stat.exists
+    when: inventory_hostname in groups['kube_cluster']
+  when: install_way == 'binary'
+
+- name: 所有 master 节点生成 kubelet.conf 文件
+  when:
+    - install_way == 'kubeadm'
+    - inventory_hostname in groups['kube_masters']
+    - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
+  shell: >
+    kubeadm init phase kubeconfig kubelet --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml

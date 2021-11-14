@@ -16,9 +16,14 @@
   - block:
     - name: 创建 load-balancer 配置文件目录
       file:
-        name: "{{ lb_config_dir }}"
+        name: "{{ item }}"
         state: directory
         mode: 0644
+      with_items:
+        - "{{ manifest_dir }}"
+        - "{{ lb_config_dir }}"
+        - "{{ systemd_service_dir }}/kubelet.service.d"
+        - "{{ kubelet_data_dir }}"
 
     - name: 确认没有运行其他负载均衡器
       when: lb_mode == "slb"
@@ -107,6 +112,8 @@
       with_items:
         - "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf"
         - "{{ kubelet_data_dir }}/config.yaml"
+        - "{{ kubelet_data_dir }}/cpu_manager_state"
+        - "{{ kubelet_data_dir }}/memory_manager_state"
     when: 'lb_statuses_result.stdout != "2"'
   when:
   - groups['kube_masters'] | length > 1

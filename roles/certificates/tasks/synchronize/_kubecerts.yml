@@ -1,9 +1,3 @@
-- name: 创建 kubernetes 证书存放目录
-  file:
-    name: "{{ k8s_pki_dir }}"
-    state: directory
-    mode: 0644
-
 - name: 获取 kubernetes 所有节点 ca 证书
   slurp:
     src: "{{ item }}"
@@ -24,8 +18,7 @@
   with_items: "{{ slurp_kubernetes_ca_certs.results }}"
   when: inventory_hostname in groups['kube_cluster']
 
-
-- name: 获取 kubernetes master 节点相关证书和 kubeconfig
+- name: 获取 kubernetes master 节点相关证书
   slurp:
     src: "{{ item }}"
   with_items:
@@ -43,9 +36,6 @@
     - "{{ front_client_key }}"
     - "{{ sa_public_key }}"
     - "{{ sa_private_key }}"
-    - "{{ kubernetes_etc_dir }}/admin.conf"
-    - "{{ kubernetes_etc_dir }}/controller-manager.conf"
-    - "{{ kubernetes_etc_dir }}/scheduler.conf"
   register: slurp_kubernetes_master_certs
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
@@ -63,9 +53,31 @@
     - inventory_hostname in groups['kube_masters']
     - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
 
-- name: 所有 master 节点生成 kubelet.conf 文件
-  when:
-    - inventory_hostname in groups['kube_masters']
-    - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
-  shell: >
-    kubeadm init phase kubeconfig kubelet --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml
+- block:
+  - name: 二进制安装时，获取 kubernetes master 节点其他证书
+    slurp:
+      src: "{{ item }}"
+    with_items:
+      - "{{ controller_cert_manager }}"
+      - "{{ controller_cert_manager_key }}"
+      - "{{ scheduler_cert }}"
+      - "{{ scheduler_cert_key }}"
+      - "{{ admin }}"
+      - "{{ admin_key }}"
+    register: slurp_kubernetes_other_master_certs
+    run_once: true
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+
+  - name: 二进制安装时，分发 kubernetes master 其他证书到 master 节点
+    copy:
+      dest: "{{ item.source }}"
+      content: "{{ item.content | b64decode }}"
+      owner: root
+      group: root
+      mode: 0644
+    no_log: true
+    with_items: "{{ slurp_kubernetes_other_master_certs.results }}"
+    when:
+      - inventory_hostname in groups['kube_masters']
+      - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
+  when: install_way == 'binary'

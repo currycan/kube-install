@@ -1,0 +1,51 @@
+- block:
+  - name: 所有 kube_cluster 节点加载依赖镜像
+    shell: >
+      {% if container_runtime == 'docker' -%}
+        docker load -i {{ cache_dir }}/images/all.tar.gz
+      {% elif container_runtime == 'containerd' -%}
+        ctr -n=k8s.io images import {{ cache_dir }}/images/all.tar.gz
+      {%- endif -%}
+
+  - name: 所有 kube_cluster 节点创建所需目录
+    file:
+      name: "{{ item }}"
+      state: directory
+      mode: 0644
+    with_items:
+    - "{{ ansible_env.HOME }}/.kube/"
+    - "{{ kubernetes_etc_dir }}"
+    - "{{ manifest_dir }}"
+    - "{{ cni_etc_dir }}"
+    - "{{ systemd_service_dir }}/kubelet.service.d"
+    - "{{ kubelet_data_dir }}"
+    - "{{ kube_proxy_data_dir }}"
+    - "{{ kubernetes_log_dir }}/kubelet"
+    - "{{ kubernetes_log_dir }}/kube-proxy"
+
+  - name: 所有 kube_cluster 节点渲染相关配置文件
+    template:
+      src: "{{ item.src }}.j2"
+      dest: "{{ item.dest }}"
+      owner: "root"
+      group: "root"
+      mode: "0644"
+    with_items:
+      - { src: "kubelet/10-kubeadm.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/10-kubeadm.conf" }
+      - { src: "kubelet/11-container-runtime.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/11-container-runtime.conf" }
+      - { src: "kubelet/12-cgroup.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/12-cgroup.conf" }
+      - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
+      - { src: "kubelet/kubelet-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
+      - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
+
+  - name: 渲染 kube-proxy 相关配置文件
+    when: install_way == 'binary'
+    template:
+      src: "{{ item.src }}.j2"
+      dest: "{{ item.dest }}"
+      owner: "root"
+      group: "root"
+      mode: "0644"
+    with_items:
+      - { src: "kube-proxy/kube-proxy.service", dest: "{{ systemd_service_dir }}/kube-proxy.service" }
+  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']))"

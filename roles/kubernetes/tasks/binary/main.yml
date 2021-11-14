@@ -1,0 +1,14 @@
+- name: 二进制安装 kubernetes
+  when: install_way == 'binary'
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { src: "{{ cache_dir }}/binary/kubernetes/", dest: "/usr/bin/"}
+
+- include_tasks: master.yml
+
+- include_tasks: worker.yml

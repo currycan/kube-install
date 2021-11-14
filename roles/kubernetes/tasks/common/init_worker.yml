@@ -1,0 +1,9 @@
+- block:
+  - name: worker 节点加载 coredns 镜像
+    shell: >
+      {% if container_runtime == 'docker' -%}
+        docker load -i {{ cache_dir }}/images/worker.tar.gz
+      {% elif container_runtime == 'containerd' -%}
+        ctr -n=k8s.io images import {{ cache_dir }}/images/worker.tar.gz
+      {%- endif -%}
+  when: "inventory_hostname in (groups['kube_nodes'] | difference(groups['delete_nodes']))"

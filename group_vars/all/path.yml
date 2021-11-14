@@ -32,6 +32,8 @@ manifest_dir: "{{ kubernetes_etc_dir }}/manifests"
 # cert paths
 k8s_pki_dir: "{{ kubernetes_etc_dir }}/pki"
 etcd_pki_dir: "{{ k8s_pki_dir }}/etcd"
+kubelet_pki_dir: "{{ kubelet_data_dir }}/pki"
+kube_proxy_pki_dir: "{{ kube_proxy_data_dir }}/pki"
 
 # cluster ha dir
 haproxy_etc_dir: /etc/haproxy

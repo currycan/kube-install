@@ -25,22 +25,6 @@
     group: root
     mode: 0755
 
-# - name: 配置 etcd.sh 到/etc/profile.d/
-#   template:
-#     src: etcd.sh.j2
-#     dest: "{{ profile_dir }}/etcd.sh"
-#     owner: root
-#     group: root
-#     mode: 0755
-
-# - name: 配置 etcd 备份脚本
-#   template:
-#     src: "{{ item.src }}"
-#     dest: "{{ item.dest }}/{{ item.src.split('.')[:-1]|join('.') }}"
-#     mode: 0755
-#   with_items:
-#     - { src: 'etcd_cron.sh.j2', dest: '/usr/local/bin/'}
-
 - name: 配置 etcd
   template:
     src: "{{ inventory_dir }}/roles/etcd/templates/{{ item.src }}.j2"

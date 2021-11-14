@@ -1,0 +1,30 @@
+- name: 二进制安装，配置 kubeadm-flags.env
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_items:
+    - { src: "kubelet/kubeadm-flags.env", dest: "/var/lib/kubelet/kubeadm-flags.env" }
+
+- name: 启动 kubelet 和 kube-proxy 组件，并设置开机启动
+  systemd:
+    name: "{{ item }}"
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
+  with_items:
+    - kubelet
+    - kube-proxy
+
+- name: 等待 kubelet kube-proxy 件启动
+  wait_for:
+    host: "127.0.0.1"
+    port: "{{ item }}"
+    delay: 5
+    connect_timeout: 60
+    timeout: 300
+  with_items:
+    - 10248
+    - 10256

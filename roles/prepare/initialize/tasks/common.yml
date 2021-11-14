@@ -170,6 +170,12 @@
     regexp: "ulimit -SHn"
     line: "ulimit -SHn 65535"
 
+- name: limit 优化
+  copy:
+    src: limits.conf
+    dest: /etc/security/limits.conf
+    mode: 0644
+
 # 优化设置 journal 日志相关，避免日志重复搜集，浪费系统资源
 - name: 准备 journal 日志相关目录
   file:

@@ -2,7 +2,7 @@
 # epel_yum_repo: http://mirrors.aliyun.com/epel/7/$basearch
 epel_yum_repo: http://mirrors.ustc.edu.cn/epel/7/$basearch
 
-# 普通用户，docker/kubectl/helm 准入管理，非 root 也可以使用kubectl docker helm命令
+# 普通用户，docker/kubectl 准入管理，非 root 也可以使用kubectl docker 命令
 normal_user:
   - devops
 

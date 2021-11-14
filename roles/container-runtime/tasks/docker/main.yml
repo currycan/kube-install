@@ -18,7 +18,19 @@
     state: directory
     mode: 0644
 
+- name: 二进制安装 docker
+  when: install_way == 'binary'
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { src: "{{ cache_dir }}/binary/docker/", dest: "/usr/local/bin/"}
+
 - name: rpm 安装 docker
+  when: install_way != 'binary'
   shell: >-
     rpm -Uvh --nodeps --force {{ cache_dir }}/docker/*.rpm
 
