@@ -29,7 +29,7 @@
 - block:
   - name: 等待 Kubernetes 三大核心组件启动
     wait_for:
-      host: "{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
+      host: "127.0.0.1"
       port: "{{ item }}"
       delay: 5
       connect_timeout: 60

@@ -6,7 +6,7 @@ Documentation=https://github.com/kubernetes/kubernetes
 
 [Service]
 ExecStart=/usr/bin/kube-scheduler \
-  --bind-address={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
+  --bind-address=127.0.0.1 \
   --feature-gates={%- if feature_gates != None -%}{% for k,v in feature_gates.items() %}{{ k }}={{ v | lower }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %} \
   --kube-api-burst=100 \
   --kube-api-qps=100 \
