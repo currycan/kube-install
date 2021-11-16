@@ -37,7 +37,7 @@
       - { src: "audit/policy.yaml", dest: "{{ kubernetes_etc_dir }}/audit/policy.yaml" }
 
   - name: 加载 master 节点各组件镜像
-    when: install_way != 'binary'
+    when: startup == 'kubeadm'
     shell: >
       {% if container_runtime == 'docker' -%}
         docker load -i {{ cache_dir }}/images/master.tar.gz

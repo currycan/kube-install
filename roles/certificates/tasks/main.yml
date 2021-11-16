@@ -16,25 +16,21 @@
   with_items:
     - "{{ k8s_pki_dir }}"
 
-- name: 配置 etcd 证书相关参数
-  when: install_way == 'kubeadm'
+- name: kubeadm 创建集群，禁用 cfssl 方式生成证书
+  when: startup == 'kubeadm'
   set_fact:
     enable_cfssl_certs: false
 
 - name: kubeadm 方式安装生成证书
-  when: install_way == 'kubeadm'
+  when: enable_kubeadm_certs | bool
   include_tasks: kubeadm/main.yml
 
-- name: 二进制方式安装，cfssl 生成证书
-  when:
-    - install_way == 'binary'
-    - enable_cfssl_certs | bool
+- name: cfssl 生成证书，仅支持 systemctl 安装方式
+  when: enable_cfssl_certs | bool
   include_tasks: cfssl/main.yml
 
-- name: 二进制方式安装，openssl 生成证书
-  when:
-    - install_way == 'binary'
-    - not (enable_cfssl_certs | bool)
+- name: openssl 生成证书
+  when: enable_openssl_certs | bool
   include_tasks: openssl/main.yml
 
 - block:
@@ -49,7 +45,7 @@
     with_items:
       - "openssl genrsa -out {{ k8s_pki_dir }}/sa.key {{ cert_key_size }}"
       - "openssl {{ cert_key_algo }} -in {{ k8s_pki_dir }}/sa.key -pubout -out {{ k8s_pki_dir }}/sa.pub"
-  when: install_way == 'binary'
+  when: enable_openssl_certs | bool or enable_cfssl_certs | bool
   run_once: true
   delegate_to: "{{ groups['kube_masters'][0] }}"
 

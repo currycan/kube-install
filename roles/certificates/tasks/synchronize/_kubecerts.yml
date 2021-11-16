@@ -54,7 +54,7 @@
     - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
 
 - block:
-  - name: 二进制安装时，获取 kubernetes master 节点其他证书
+  - name: systemctl 安装时，获取 kubernetes master 节点其他证书
     slurp:
       src: "{{ item }}"
     with_items:
@@ -68,7 +68,7 @@
     run_once: true
     delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
 
-  - name: 二进制安装时，分发 kubernetes master 其他证书到 master 节点
+  - name: systemctl 安装时，分发 kubernetes master 其他证书到 master 节点
     copy:
       dest: "{{ item.source }}"
       content: "{{ item.content | b64decode }}"
@@ -80,4 +80,21 @@
     when:
       - inventory_hostname in groups['kube_masters']
       - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
-  when: install_way == 'binary'
+  when: enable_openssl_certs | bool or enable_cfssl_certs | bool
+
+# - name: kubeadm 安装时，删除 kubernetes master 节点其他证书
+#   file:
+#     path: "{{ item }}"
+#     state: absent
+#   with_items:
+#     - "{{ controller_cert_manager }}"
+#     - "{{ controller_cert_manager_key }}"
+#     - "{{ scheduler_cert }}"
+#     - "{{ scheduler_cert_key }}"
+#     - "{{ admin }}"
+#     - "{{ admin_key }}"
+#   when:
+#     - startup == 'kubeadm'
+#     - enable_openssl_certs | bool
+#     - inventory_hostname in groups['kube_masters']
+#     - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)

@@ -57,11 +57,10 @@
       with_items: "{{ all_kubeconfig_files['results'] }}"
       when: not item.stat.exists
     when: inventory_hostname in groups['kube_cluster']
-  when: install_way == 'binary'
+  when: enable_openssl_certs | bool or enable_cfssl_certs | bool
 
 - name: 所有 master 节点生成 kubelet.conf 文件
-  when:
-    - install_way == 'kubeadm'
+  when: enable_kubeadm_certs | bool
     - inventory_hostname in groups['kube_masters']
     - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
   shell: >

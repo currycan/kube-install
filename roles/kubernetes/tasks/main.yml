@@ -56,12 +56,12 @@
   - name: 初始化化 kubernetes 集群 worker 节点
     include_tasks:  common/init_worker.yml
 
-  - name: kubeadm 方式搭建 kubernetes 集群
-    when: install_way != 'binary'
+  - name: kubeadm 方式启动 kubernetes 集群各组件
+    when: startup == 'kubeadm'
     include_tasks: kubeadm/main.yml
 
-  - name: 二进制方式搭建 kubernetes 集群
-    when: install_way == 'binary'
+  - name: systemctl 方式启动 kubernetes 集群各组件
+    when: startup != 'kubeadm'
     include_tasks: binary/main.yml
 
   - include_tasks: rbac/rbac.yml

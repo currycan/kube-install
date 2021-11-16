@@ -63,7 +63,8 @@
         rm -f {{ kubelet_data_dir }}/memory_manager_state;
         kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml \
         --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests \
-        --ignore-preflight-errors=FileAvailable--etc-kubernetes-kubelet.conf
+        --ignore-preflight-errors=FileAvailable--etc-kubernetes-kubelet.conf \
+        --ignore-preflight-errors=FileAvailable--etc-kubernetes-bootstrap-kubelet.conf
       register: master_join_rslt
       ignore_errors: true
 
