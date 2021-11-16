@@ -185,9 +185,9 @@ worker_certs:
     csr: "{%- if enable_cfssl_certs | bool -%}kubelet.json{% else %}kubelet{%- endif -%}"
     dir: "{{ k8s_pki_dir }}"
   - name: kube-proxy
-    cn: "system:node:{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
+    cn: "system:kube-proxy"
     parent_ca: kubernetes-ca
-    org: "system:nodes"
+    org: "system:node-proxier"
     kind: client
     csr: "{%- if enable_cfssl_certs | bool -%}kube-proxy.json{% else %}kubelet{%- endif -%}"
     dir: "{{ k8s_pki_dir }}"
