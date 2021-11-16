@@ -3,9 +3,23 @@
     name: ntp
     state: absent
 
-- name: rpm 安装 chrony
-  shell: >-
-    rpm -Uvh --nodeps --force {{ cache_dir }}/chrony/*.rpm
+- name: debug
+  debug:
+    msg: "安装 chrony, 可能需要一定时间。。"
+  run_once: true
+
+- name: 获取 chrony rpm 文件包
+  find:
+    paths: "{{ cache_dir }}/chrony/"
+    patterns: "*.rpm"
+    # use_regex: true
+  register: get_chrony_rpm_files
+
+- name: 离线安装 chrony
+  yum:
+    name: "{{ item.path }}"
+    state: present
+  with_items: "{{ get_chrony_rpm_files['files'] }}"
 
 - block:
   - name: 配置 chrony server

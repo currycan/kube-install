@@ -18,6 +18,26 @@
     state: directory
     mode: 0644
 
+- block:
+  - name: debug
+    debug:
+      msg: "安装 docker, 可能需要一定时间。。"
+    run_once: true
+
+  - name: 获取 docker rpm 文件包
+    find:
+      paths: "{{ cache_dir }}/docker/"
+      patterns: "*.rpm"
+      # use_regex: true
+    register: get_docker_rpm_files
+
+  - name: 离线安装 docker
+    yum:
+      name: "{{ item.path }}"
+      state: present
+    with_items: "{{ get_docker_rpm_files['files'] }}"
+  when: install_way != 'binary'
+
 - name: 二进制安装 docker
   when: install_way == 'binary'
   copy:
@@ -28,11 +48,6 @@
     mode: 0755
   with_items:
     - { src: "{{ cache_dir }}/binary/docker/", dest: "/usr/local/bin/"}
-
-- name: rpm 安装 docker
-  when: install_way != 'binary'
-  shell: >-
-    rpm -Uvh --nodeps --force {{ cache_dir }}/docker/*.rpm
 
 - name: 安装 docker 命令补全工具、 docker orphan 清理工具、docker-tag 工具
   copy:
