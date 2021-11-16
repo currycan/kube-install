@@ -39,18 +39,9 @@
     msg: "安装基础依赖, 可能需要一定时间。。"
   run_once: true
 
-- name: 获取基础依赖 rpm 文件包
-  find:
-    paths: "{{ cache_dir }}/dependence/"
-    patterns: "*.rpm"
-    # use_regex: true
-  register: get_dependence_rpm_files
-
 - name: 离线安装基础依赖
-  yum:
-    name: "{{ item.path }}"
-    state: present
-  with_items: "{{ get_dependence_rpm_files['files'] }}"
+  shell: >-
+    rpm -Uvh --nodeps --force {{ cache_dir }}/dependence/*.rpm
 
 # - name: yum 安装基础软件包
 #   package:

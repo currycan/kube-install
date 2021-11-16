@@ -4,16 +4,7 @@
       msg: "更新 kernel, 可能需要一定时间。。"
     run_once: true
 
-  - name: 获取 kernel rpm 文件包
-    find:
-      paths: "{{ cache_dir }}/kernel/"
-      patterns: "*.rpm"
-      # use_regex: true
-    register: get_kernel_rpm_files
-
   - name: 离线安装 kernel
-    yum:
-      name: "{{ item.path }}"
-      state: present
-    with_items: "{{ get_kernel_rpm_files['files'] }}"
+    shell: >-
+      rpm -Uvh --nodeps --force {{ cache_dir }}/kernel/*.rpm
   when: 'fact_kernel_version not in kernel_offlie_version'

@@ -68,6 +68,7 @@
 
 - name: 删除证书签名请求文件
   include_tasks: "_delete_files.yml"
+  no_log: true
   loop_control:
     loop_var: out_item
   with_items: "{{ find_files_to_delete['results'] }}"
