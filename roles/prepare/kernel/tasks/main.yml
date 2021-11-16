@@ -40,9 +40,16 @@
 - name: 卸载 3.10 版本 kernel
   shell: "yum remove -y kernel*3.10*"
 
-- name: 需手动重启服务器
-  debug:
-    msg: >-
-      节点：{{ inventory_hostname }}，
-      内核已升级完成，
-      请手动执行 reboot -f 重启该服务器。
+- block:
+  - name: 需手动重启服务器
+    debug:
+      msg: >-
+        节点：{{ inventory_hostname }}，
+        内核已升级完成，
+        请手动执行 reboot -f 重启该服务器。
+
+  - name: 校验节点操作系统
+    assert:
+      that: fact_kernel_version in kernel_offlie_version
+      msg: "节点：{{ inventory_hostname }} 内核版本为 {{ fact_kernel_version }}，与设定版本 {{ kernel_offlie_version }} 不同，需重启加载！！"
+  when: 'fact_kernel_version not in kernel_offlie_version'

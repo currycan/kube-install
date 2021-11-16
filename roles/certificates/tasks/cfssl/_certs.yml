@@ -1,56 +1,41 @@
-- name: 判断 {{ out_item.item.bare }} pem 证书是否存在
+- name: 判断 {{ out_item.item.dir }}/{{ out_item.item.name }}.pem 证书是否存在
   stat:
-    path: "{{ out_item.item.dir }}/{{ out_item.item.bare }}.pem"
+    path: "{{ out_item.item.dir }}/{{ out_item.item.name }}.pem"
   register: check_cert_pem_files
 
-- name: 渲染 {{ out_item.item.bare }} 证书签名请求文件
+- block:
+  - name: 渲染 {{ out_item.item.dir }}/{{ out_item.item.csr }} 证书签名请求文件
+    template:
+      src: "{{ inventory_dir }}/roles/certificates/templates/cfssl/cert-csr.json.j2"
+      dest: "{{ out_item.item.dir }}/{{ out_item.item.csr }}"
+      owner: root
+      mode: 0644
+
+  - name: 生成 {{ out_item.item.dir }}/{{ out_item.item.name }} CA 证书和私钥
+    when: out_item.item.kind == "ca"
+    shell: >-
+      cfssl gencert -initca {{ out_item.item.dir }}/{{ out_item.item.csr }} | \
+      cfssljson -bare {{ out_item.item.dir }}/{{ out_item.item.name }}
+
+  - name: 生成 {{ out_item.item.dir }}/{{ out_item.item.name }} 应用服务端和客户端证书
+    when: out_item.item.kind != "ca"
+    shell: >-
+      cfssl gencert \
+        {% if 'etcd-ca' == out_item.item.parent_ca -%}
+        -ca={{ etcd_ca }} \
+        -ca-key={{ etcd_ca_key }} \
+        {% elif 'kubernetes-ca' == out_item.item.parent_ca -%}
+        -ca={{ kubernetes_ca }} \
+        -ca-key={{ kubernetes_ca_key }} \
+        {% elif 'kubernetes-front-proxy-ca' == out_item.item.parent_ca -%}
+        -ca={{ front_ca }} \
+        -ca-key={{ front_ca_key }} \
+        {% endif -%}
+        -config={{ cfssl_ca_config }} \
+        {% if out_item.item.hosts is defined -%}
+        -hostname={{ out_item.item.hosts }} \
+        {% endif -%}
+        -profile={{ out_item.item.kind }} \
+        {{ out_item.item.dir }}/{{ out_item.item.csr }} | \
+        cfssljson -bare {{ out_item.item.dir }}/{{ out_item.item.name }}
   when: not check_cert_pem_files.stat.exists
-  template:
-    src: >-
-      {% if out_item.item.bare == "kubelet" -%}
-      {{ inventory_dir }}/roles/certificates/templates/cfssl/kubelet-csr.json.j2
-      {%- else -%}
-      {{ inventory_dir }}/roles/certificates/templates/cfssl/ca-csr.json.j2
-      {%- endif %}
-    dest: "{{ out_item.item.dir }}/{{ out_item.item.file }}"
-    owner: root
-    mode: 0644
-
-- name: 生成 {{ out_item.item.bare }} CA 证书和私钥
-  when:
-    - out_item.item.ca == ""
-    - not check_cert_pem_files.stat.exists
-  shell: >
-    cfssl gencert -initca {{ out_item.item.dir }}/{{ out_item.item.file }} | \
-    cfssljson -bare {{ out_item.item.dir }}/{{ out_item.item.bare }}
-
-- name: 生成 {{ out_item.item.bare }} 应用服务端和客户端证书
-  when:
-    - out_item.item.ca != ""
-    - not check_cert_pem_files.stat.exists
-  shell: >
-    cfssl gencert \
-      {% if out_item.item.type is defined -%}
-      {% if 'etcd' in out_item.item.type -%}
-      -ca={{ etcd_ca }} \
-      -ca-key={{ etcd_ca_key }} \
-      {% elif 'kube' in out_item.item.type -%}
-      {% if 'front-proxy' in out_item.item.bare -%}
-      -ca={{ front_ca }} \
-      -ca-key={{ front_ca_key }} \
-      {% else -%}
-      -ca={{ kubernetes_ca }} \
-      -ca-key={{ kubernetes_ca_key }} \
-      {% endif -%}
-      {% endif -%}
-      {% else -%}
-      -ca="{{ out_item.item.dir }}/{{ out_item.item.ca }}.pem" \
-      -ca-key="{{ out_item.item.dir }}/{{ out_item.item.ca }}-key.pem" \
-      {% endif -%}
-      -config={{ cfssl_ca_config }} \
-      {% if out_item.item.hosts != "" -%}
-      -hostname={{ out_item.item.hosts }} \
-      {% endif -%}
-      -profile={{ out_item.item.profile }} \
-      {{ out_item.item.dir }}/{{ out_item.item.file }} | \
-      cfssljson -bare {{ out_item.item.dir }}/{{ out_item.item.bare }}

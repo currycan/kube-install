@@ -18,6 +18,7 @@
 - name: kubeadm reset 集群
   shell: >
     kubeadm reset --force
+  ignore_errors: true
   register: reset_cluster
   until: reset_cluster.rc == 0
   retries: 3

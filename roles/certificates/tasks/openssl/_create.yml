@@ -1,59 +1,61 @@
 - name: 判断证书私钥是否存在
   stat:
-    path: "{{ item.dir }}/{{ item.bare }}.key"
+    path: "{{ item.dir }}/{{ item.name }}.key"
   with_items:
     - "{{ certs }}"
   register: check_cert_key_files
 
-- name: 获取 kubernetes master 节点 CA 证书
-  when: check_cert_key_files['results'][0].item.bare == "kubelet"
-  slurp:
-    src: "{{ item }}"
-  with_items:
-    - "{{ kubernetes_ca }}"
-    - "{{ kubernetes_ca_key }}"
-  register: slurp_kubernetes_ca_certs
-  run_once: true
-  delegate_to: "{{ groups['kube_masters'][0] }}"
+- block:
+  - name: 获取 kubernetes CA 证书
+    slurp:
+      src: "{{ item }}"
+    with_items:
+      - "{{ kubernetes_ca }}"
+      - "{{ kubernetes_ca_key }}"
+    register: slurp_kubernetes_ca_certs
+    run_once: true
+    delegate_to: "{{ groups['kube_masters'][0] }}"
 
-- name: 分发 kubernetes CA 证书到各节点
+  - name: 分发 kubernetes CA 证书到各节点
+    when: inventory_hostname != groups['kube_masters'][0]
+    copy:
+      dest: "{{ item.source }}"
+      content: "{{ item.content | b64decode }}"
+      owner: root
+      group: root
+      mode: 0644
+    no_log: true
+    with_items: "{{ slurp_kubernetes_ca_certs.results }}"
   when:
-    - check_cert_key_files['results'][0].item.bare == "kubelet"
-    - inventory_hostname != groups['kube_masters'][0]
-  copy:
-    dest: "{{ item.source }}"
-    content: "{{ item.content | b64decode }}"
-    owner: root
-    group: root
-    mode: 0644
-  no_log: true
-  with_items: "{{ slurp_kubernetes_ca_certs.results }}"
+    - check_cert_key_files['results'][0].item.org is defined
+    - check_cert_key_files['results'][0].item.org == "system:nodes"
 
-- name: 渲染 etcd 证书配置文件
-  when: "'etcd' in certs[0].file"
+- name: 渲染证书签名请求文件
   template:
-    src: "{{ inventory_dir }}/roles/certificates/templates/openssl/{{ certs[0].file }}.j2"
-    dest: "{{ item }}"
-    owner: root
-    mode: 0644
+    src: "{{ inventory_dir }}/roles/certificates/templates/openssl/{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
   with_items:
-    - "{{ etcd_openssl_cnf }}"
-
-- name: 渲染 kubernetest 证书配置文件
-  when: "'kube' in certs[0].file"
-  template:
-    src: "{{ inventory_dir }}/roles/certificates/templates/openssl/{{ certs[0].file }}.j2"
-    dest: "{{ item }}"
-    owner: root
-    mode: 0644
-  with_items:
-    - "{{ kube_openssl_cnf }}"
+    - { src: "etcd-openssl.cnf", dest: "{{ etcd_openssl_cnf }}" }
+    - { src: "kube-openssl.cnf", dest: "{{ kube_openssl_cnf }}" }
 
 - include_tasks: "_certs.yml"
   loop_control:
     loop_var: out_item
   with_items: "{{ check_cert_key_files['results'] }}"
 
+- name: worker 节点删除 kubernetes CA 私钥
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items: "{{ kubernetes_ca_key }}"
+  when:
+    - inventory_hostname in (groups['kube_nodes'] | difference(groups['delete_nodes']))
+    - inventory_hostname not in (groups['kube_masters'] | difference(groups['delete_masters']))
+    - check_cert_key_files['results'][0].item.org is defined
+    - check_cert_key_files['results'][0].item.org == "system:nodes"
 - name: 获取待删除的证书临时文件
   find:
     paths: "{{ item }}"

@@ -10,23 +10,23 @@ ST = "{{ cert_info_state }}"
 L = "{{ cert_info_locality }}"
 OU = "{{ cert_info_org_uit }}"
 
-[ v3_ca ]
+[ ca ]
 basicConstraints = critical, CA:TRUE
 keyUsage = critical, digitalSignature, keyEncipherment, keyCertSign
 
-[ v3_req_server ]
+[ server ]
 basicConstraints = CA:FALSE
 keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth, clientAuth
 subjectAltName = @alt_kube_apiserver
 
-[ v3_req_kubelet ]
+[ kubelet ]
 basicConstraints = CA:FALSE
 keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth, clientAuth
 subjectAltName = @alt_kubelet
 
-[ v3_req_client ]
+[ client ]
 basicConstraints = CA:FALSE
 keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = clientAuth

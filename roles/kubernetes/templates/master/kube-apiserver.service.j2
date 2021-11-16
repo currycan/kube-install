@@ -19,7 +19,7 @@ ExecStart=/usr/bin/kube-apiserver \
   --audit-log-truncate-enabled=true \
   --audit-policy-file={{ kubernetes_etc_dir }}/audit/policy.yaml \
   --authorization-mode=Node,RBAC \
-  --bind-address=127.0.0.1 \
+  --bind-address={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
   --client-ca-file={{ kubernetes_ca }} \
 {% if apiserver_disable_admission_plugins|length > 0 %}
   --disable-admission-plugins={{ apiserver_disable_admission_plugins | join(',') }} \

@@ -1,12 +1,25 @@
-- name: 创建{{ kubernetes_etc_dir }}目录
+- name: 创建{{ etcd_pki_dir }}目录
+  when: "inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']))"
+  file:
+    name: "{{ item }}"
+    state: directory
+    mode: "0644"
+  with_items:
+    - "{{ etcd_pki_dir }}"
+
+- name: 创建{{ k8s_pki_dir }}目录
+  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']))"
   file:
     name: "{{ item }}"
     state: directory
     mode: "0644"
   with_items:
     - "{{ k8s_pki_dir }}"
-    - "{{ etcd_pki_dir }}"
-    - "{{ kube_proxy_data_dir }}"
+
+- name: 配置 etcd 证书相关参数
+  when: install_way == 'kubeadm'
+  set_fact:
+    enable_cfssl_certs: false
 
 - name: kubeadm 方式安装生成证书
   when: install_way == 'kubeadm'

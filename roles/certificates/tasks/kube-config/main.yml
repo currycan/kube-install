@@ -1,3 +1,18 @@
+- name: rpm 安装 kubectl
+  when: install_way != 'binary'
+  shell: >-
+    rpm -Uvh --nodeps --force {{ cache_dir }}/kubernetes/*kubectl*.rpm
+
+- name: 二进制安装 kubectl
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { src: "{{ cache_dir }}/binary/kubernetes/kubectl", dest: "/usr/bin/"}
+
 - name: 生成 bootstrap token
   include_tasks: common/gen_bootstrap_token.yml
 

@@ -1,40 +1,44 @@
-# - block:
-#   - name: 等待 apiserver 运行
-#     uri:
-#       url: "https://{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}:6443/healthz"
-#       validate_certs: no
-#     register: apiserver_result
-#     until: apiserver_result.status == 200
-#     retries: 30
-#     delay: 5
+# - name: 等待 apiserver 运行
+#   uri:
+#     url: "https://{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}:6443/healthz"
+#     validate_certs: no
+#   register: apiserver_result
+#   until: apiserver_result.status == 200
+#   retries: 15
+#   delay: 10
 
-#   - name: 等待 kube-scheduler 运行
-#     uri:
-#       url: "https://127.0.0.1:10259/healthz"
-#       validate_certs: no
-#     register: scheduler_result
-#     until: scheduler_result.status == 200
-#     retries: 30
-#     delay: 5
+# - name: 等待 kube-scheduler 运行
+#   uri:
+#     url: "https://127.0.0.1:10259/healthz"
+#     validate_certs: no
+#   register: scheduler_result
+#   until: scheduler_result.status == 200
+#   retries: 15
+#   delay: 10
 
-#   - name: 等待 kube-controller-manager 运行
-#     uri:
-#       url: "https://127.0.0.1:10257/healthz"
-#       validate_certs: no
-#     register: controller_manager_result
-#     until: controller_manager_result.status == 200
-#     retries: 30
-#     delay: 5
+# - name: 等待 kube-controller-manager 运行
+#   uri:
+#     url: "https://127.0.0.1:10257/healthz"
+#     validate_certs: no
+#   register: controller_manager_result
+#   until: controller_manager_result.status == 200
+#   retries: 15
+#   delay: 10
 
-- block:
-  - name: 等待 Kubernetes 三大核心组件启动
-    wait_for:
-      host: "127.0.0.1"
-      port: "{{ item }}"
-      delay: 5
-      connect_timeout: 60
-      timeout: 300
-    with_items:
-      - "6443"
-      - "10257"
-      - "10259"
+- name: 等待 Kubernetes 三大核心组件启动
+  wait_for:
+    host: >-
+      {%- if install_way == 'binary' -%}
+      {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
+      {%- else -%}
+      127.0.0.1
+      {%- endif -%}
+    port: "{{ item }}"
+    state: started
+    delay: 2
+    connect_timeout: 2
+    timeout: 15
+  with_items:
+    - "6443"
+    - "10257"
+    - "10259"

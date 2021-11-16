@@ -5,7 +5,7 @@ etcd_cert_hosts: "{% for host in (groups['kube_etcds'] | difference(groups['dele
 
 apiserver_hosts: "{{ master_cert_hosts }},{{ api_service_ip }},kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.default.svc.{{ cluster_domain_name }},*.master.kubernetes.node,127.0.0.1,localhost"
 
-# certs config
+# cfssl config
 cert_key_algo: rsa
 cert_key_size: 2048
 cert_info_country: CN
@@ -14,9 +14,8 @@ cert_info_locality: ShangHai
 cert_info_org_uit: kubernetes
 cert_info_expiry: 87600h
 
-# kubernetes证书过期时间（天）
+# openssl config
 certs_expired: 3650
-# kubernetes根证书过期时间（天）
 ca_certs_expired: 36500
 
 # 配置文件
@@ -44,10 +43,10 @@ apiserver_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver
 apiserver_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-key.pem{% else %}apiserver.key{%- endif -%}"
 apiserver_kubelet_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-kubelet-client.pem{% else %}apiserver-kubelet-client.crt{%- endif -%}"
 apiserver_kubelet_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}apiserver-kubelet-client-key.pem{% else %}apiserver-kubelet-client.key{%- endif -%}"
-controller_cert_manager: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-controller-manager.pem{% else %}kube-controller-manager.crt{%- endif -%}"
-controller_cert_manager_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-controller-manager-key.pem{% else %}kube-controller-manager.key{%- endif -%}"
-scheduler_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-scheduler.pem{% else %}kube-scheduler.crt{%- endif -%}"
-scheduler_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-scheduler-key.pem{% else %}kube-scheduler.key{%- endif -%}"
+controller_cert_manager: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}controller-manager.pem{% else %}controller-manager.crt{%- endif -%}"
+controller_cert_manager_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}controller-manager-key.pem{% else %}controller-manager.key{%- endif -%}"
+scheduler_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}scheduler.pem{% else %}scheduler.crt{%- endif -%}"
+scheduler_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}scheduler-key.pem{% else %}scheduler.key{%- endif -%}"
 front_ca: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}front-proxy-ca.pem{% else %}front-proxy-ca.crt{%- endif -%}"
 front_ca_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}front-proxy-ca-key.pem{% else %}front-proxy-ca.key{%- endif -%}"
 front_client: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}front-proxy-client.pem{% else %}front-proxy-client.crt{%- endif -%}"
@@ -61,3 +60,134 @@ kubelet_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kubelet.pem
 kubelet_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kubelet-key.pem{% else %}kubelet.key{%- endif -%}"
 kube_proxy_cert: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-proxy.pem{% else %}kube-proxy.crt{%- endif -%}"
 kube_proxy_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube-proxy-key.pem{% else %}kube-proxy.key{%- endif -%}"
+
+# CN: Common cn，kube-apiserver 从证书中提取该字段作为请求的用户名 (User)；浏览器使用该字段验证网站是否合法
+# C: Country， 国家
+# L: Locality，地区，城市
+# O: Organization，kube-apiserver 从证书中提取该字段作为请求用户所属的组 (Group)
+# OU: Organization Unit cn，组织单位名称，公司部门
+# ST: State，州，省
+master_certs:
+  # root ca
+  - name: ca
+    cn: kubernetes-ca
+    kind: ca
+    csr: "{%- if enable_cfssl_certs | bool -%}kubernetes-ca-csr.json{% else %}ca{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: ca
+    cn: etcd-ca
+    kind: ca
+    csr: "{%- if enable_cfssl_certs | bool -%}kubernetes-ca-csr.json{% else %}ca{%- endif -%}"
+    dir: "{{ etcd_pki_dir }}"
+  - name: front-proxy-ca
+    cn: kubernetes-front-proxy-ca
+    kind: ca
+    csr: "{%- if enable_cfssl_certs | bool -%}kubernetes-ca-csr.json{% else %}ca{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  # certificates
+  - name: server
+    cn: kube-etcd
+    parent_ca: etcd-ca
+    # 此处需要特别注意，由于etcd实现方式不同，server的证书也会用于进行客户端认证，因此要选对等模式
+    kind: peer
+    hosts: "{{ etcd_cert_hosts }}"
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-etcd-csr.json{% else %}peer{%- endif -%}"
+    dir: "{{ etcd_pki_dir }}"
+  - name: peer
+    cn: kube-etcd-peer
+    parent_ca: etcd-ca
+    kind: peer
+    hosts: "{{ etcd_cert_hosts }}"
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-etcd-peer-csr.json{% else %}peer{%- endif -%}"
+    dir: "{{ etcd_pki_dir }}"
+  - name: healthcheck-client
+    cn: kube-etcd-healthcheck-client
+    parent_ca: etcd-ca
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-etcd-healthcheck-client-csr.json{% else %}client{%- endif -%}"
+    dir: "{{ etcd_pki_dir }}"
+  - name: apiserver-etcd-client
+    cn: kube-apiserver-etcd-client
+    parent_ca: etcd-ca
+    org: "system:masters"
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-apiserver-etcd-client.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: apiserver
+    cn: kube-apiserver
+    parent_ca: kubernetes-ca
+    kind: server
+    hosts: "{{ apiserver_hosts }}"
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-apiserver.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: apiserver-kubelet-client
+    cn: kube-apiserver-kubelet-client
+    parent_ca: kubernetes-ca
+    org: "system:masters"
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-apiserver-kubelet-client.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: front-proxy-client
+    cn: front-proxy-client
+    parent_ca: kubernetes-front-proxy-ca
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}front-proxy-client.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  # self
+  - name: controller-manager
+    cn: "system:kube-controller-manager"
+    parent_ca: kubernetes-ca
+    org: "system:masters"
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-controller-manager.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: scheduler
+    cn: "system:kube-scheduler"
+    parent_ca: kubernetes-ca
+    org: "system:masters"
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-scheduler.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: admin
+    cn: "kubernetes-admin"
+    parent_ca: kubernetes-ca
+    org: "system:masters"
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kubernetes-admin.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: cs-admin
+    cn: "admin"
+    parent_ca: kubernetes-ca
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}cs-admin.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: cs-ops
+    cn: "ops"
+    parent_ca: kubernetes-ca
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}cs-ops.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: cs-dev
+    cn: "dev"
+    parent_ca: kubernetes-ca
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}cs-dev.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+
+# org 一定要正确，否则认证不过
+# kubectl certificate approve csr-x9t6j
+worker_certs:
+  - name: kubelet
+    cn: "system:node:{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
+    parent_ca: kubernetes-ca
+    org: "system:nodes"
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kubelet.json{% else %}kubelet{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
+  - name: kube-proxy
+    cn: "system:node:{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
+    parent_ca: kubernetes-ca
+    org: "system:nodes"
+    kind: client
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-proxy.json{% else %}kubelet{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"
