@@ -74,6 +74,7 @@ function download_dependence_rpm (){
         bash-completion \
         rsync \
         ipset \
+        ebtables \
         ipvsadm \
         tree \
         git \
@@ -140,7 +141,7 @@ function download_containerd_binary (){
 function download_docker_binary (){
     if [ ! -d ${BINARY_DIR}/docker ];then
         cd /tmp
-        docker_version=`curl -sSf https://download.docker.com/linux/static/stable/x86_64/ | grep -e docker- | tail -n 1 | cut -d">" -f1 | grep -op "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
+        docker_version=`curl -sSf https://download.docker.com/linux/static/stable/x86_64/ | grep -e docker- | tail -n 1 | cut -d">" -f1 | grep -oP "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
         curl -fSLO https://download.docker.com/linux/static/stable/x86_64/docker-${docker_version}.tgz
         mkdir -p ${BINARY_DIR}/docker
         tar zxvf docker-${docker_version}.tgz -C ${BINARY_DIR}
