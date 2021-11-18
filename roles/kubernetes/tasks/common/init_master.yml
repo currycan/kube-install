@@ -10,6 +10,9 @@
     - "{{ kubernetes_log_dir }}/kube-apiserver"
     - "{{ kubernetes_log_dir }}/kube-controller-manager"
     - "{{ kubernetes_log_dir }}/kube-scheduler"
+    - "{{ rbac_dir }}"
+    - "{{ addons_dir }}/coredns"
+    - "{{ addons_dir }}/kube-proxy"
 
   - name: 生成 encryption config
     include_tasks: common/encryption_config_secret.yml

@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kubeadm:get-nodes
+  name: get-nodes
 rules:
 - apiGroups:
   - ""
@@ -14,20 +14,20 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kubeadm:get-nodes
+  name: get-nodes
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kubeadm:get-nodes
+  name: get-nodes
 subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
-  name: system:bootstrappers:kubeadm:default-node-token
+  name: system:bootstrappers:default-node-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kubeadm:kubelet-bootstrap
+  name: kubelet-bootstrap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -35,12 +35,12 @@ roleRef:
 subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
-  name: system:bootstrappers:kubeadm:default-node-token
+  name: system:bootstrappers:default-node-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kubeadm:node-autoapprove-bootstrap
+  name: node-autoapprove-bootstrap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -48,12 +48,12 @@ roleRef:
 subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
-  name: system:bootstrappers:kubeadm:default-node-token
+  name: system:bootstrappers:default-node-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kubeadm:node-autoapprove-certificate-rotation
+  name: node-autoapprove-certificate-rotation
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -62,16 +62,3 @@ subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
   name: system:nodes
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: kubeadm:node-proxier
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: system:node-proxier
-subjects:
-- kind: ServiceAccount
-  name: kube-proxy
-  namespace: kube-system

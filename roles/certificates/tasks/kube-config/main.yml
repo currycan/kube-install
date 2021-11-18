@@ -46,22 +46,15 @@
 
   - name: 所有 kube cluster 节点
     block:
-    - name: 判断 kubelet 和 kube-proxy 组件的 kubeconfig 文件是否存在
+    - name: 判断 kubelet bootstrappers kubeconfig 文件是否存在
       stat:
         path: "{{ item.path }}"
       with_items: "{{ kube_config.contexts.all }}"
       register: all_kubeconfig_files
 
-    - name: 创建 kubelet 和 kube-proxy 组件的 kubeconfig 文件
+    - name: 创建 kubelet bootstrappers kubeconfig 文件
       include_tasks: "_create.yml"
       with_items: "{{ all_kubeconfig_files['results'] }}"
       when: not item.stat.exists
-    when: inventory_hostname in groups['kube_cluster']
+    when: inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | difference(groups['delete_nodes']))
   when: enable_openssl_certs | bool or enable_cfssl_certs | bool
-
-- name: 所有 master 节点生成 kubelet.conf 文件
-  when: enable_kubeadm_certs | bool
-    - inventory_hostname in groups['kube_masters']
-    - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first)
-  shell: >
-    kubeadm init phase kubeconfig kubelet --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml

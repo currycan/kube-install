@@ -28,6 +28,8 @@ kubernetes_log_dir: /var/log/kubernetes
 kubelet_data_dir: /var/lib/kubelet
 kube_proxy_data_dir: /var/lib/kube-proxy
 manifest_dir: "{{ kubernetes_etc_dir }}/manifests"
+rbac_dir: "{{kubernetes_etc_dir}}/rbac"
+addons_dir: "{{kubernetes_etc_dir}}/addons"
 
 # cert paths
 k8s_pki_dir: "{{ kubernetes_etc_dir }}/pki"

@@ -115,4 +115,4 @@
       mode: 0600
     no_log: true
     with_items: "{{ slurp_kubeconfig.results }}"
-  when: inventory_hostname in groups['kube_cluster']
+  when: inventory_hostname in groups['kube_cluster'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | difference(groups['delete_nodes'])

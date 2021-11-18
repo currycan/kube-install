@@ -21,7 +21,7 @@
     - "{{ kubelet_data_dir }}"
     - "{{ kube_proxy_data_dir }}"
     - "{{ kubernetes_log_dir }}/kubelet"
-    - "{{ kubernetes_log_dir }}/kube-proxy"
+    # - "{{ kubernetes_log_dir }}/kube-proxy"
 
   - name: 所有 kube_cluster 节点渲染相关配置文件
     template:
@@ -36,7 +36,7 @@
       - { src: "kubelet/12-cgroup.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/12-cgroup.conf" }
       - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
       - { src: "kubelet/kubelet-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
-      - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
+      # - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
 
   - name: 渲染 kube-proxy 相关配置文件
     when: startup != 'kubeadm'

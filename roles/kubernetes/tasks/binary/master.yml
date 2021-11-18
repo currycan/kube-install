@@ -13,7 +13,7 @@
       - { src: "master/kube-apiserver.service", dest: "{{ systemd_service_dir }}/kube-apiserver.service" }
       - { src: "master/kube-controller-manager.service", dest: "{{ systemd_service_dir }}/kube-controller-manager.service" }
       - { src: "master/kube-scheduler.service", dest: "{{ systemd_service_dir }}/kube-scheduler.service" }
-      - { src: "bootstrap-secret/kubelet-bootstrap-secret.yaml", dest: "{{ kubernetes_etc_dir }}/kubelet-bootstrap-secret.yaml" }
+      - { src: "bootstrap-secret/kubelet-bootstrap-secret.yaml", dest: "{{ rbac_dir }}/kubelet-bootstrap-secret.yaml" }
 
   - name: 启动 kubernetes master节点 三大核心组件，并设置开机启动
     systemd:
@@ -29,15 +29,25 @@
   - include_tasks: common/check_master_status.yml
 
   - block:
-    - name: 配置 rbac 文件
+    - name: 配置 kubelet rbac 文件
       copy:
-        src: "clusterrolebindings"
-        dest: "{{ kubernetes_etc_dir }}"
+        src: "kubelet-rbac"
+        dest: "{{ rbac_dir }}"
         mode: 0644
 
-    - name: 创建 RBAC 资源
+    - name: 渲染 kubelet rbac 文件
+      template:
+        src: "{{ item.src }}.j2"
+        dest: "{{ item.dest }}"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      with_items:
+        - { src: "kubelet/kubelet-config-rbac.yaml", dest: "{{ rbac_dir }}/kubelet-rbac/kubelet-config-rbac.yaml" }
+
+    - name: 创建 kubelet rbac 资源
       shell: >
-        kubectl apply -f "{{ kubernetes_etc_dir }}/clusterrolebindings"
+        kubectl apply -f "{{ rbac_dir }}/kubelet-rbac"
       environment:
         KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
     delegate_to: "{{ groups['kube_masters'][0] }}"
@@ -45,7 +55,7 @@
 
   - name: 创建 kubelet bootstrap secret
     shell: >
-      kubectl apply -f {{ kubernetes_etc_dir }}/kubelet-bootstrap-secret.yaml
+      kubectl apply -f {{ rbac_dir }}/kubelet-bootstrap-secret.yaml
     environment:
         KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
     run_once: true

@@ -38,7 +38,7 @@
     group: root
     mode: 0755
   with_items:
-    - { src: "{{ cache_dir }}/binary/docker/", dest: "/usr/local/bin/"}
+    - { src: "{{ cache_dir }}/binary/docker/", dest: "/usr/bin/"}
 
 - name: 安装 docker 命令补全工具、 docker orphan 清理工具、docker-tag 工具
   copy:

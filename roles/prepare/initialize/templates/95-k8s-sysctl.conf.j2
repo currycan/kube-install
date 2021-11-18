@@ -18,12 +18,15 @@ vm.panic_on_oom=0 # 开启 OOM
 #fs.may_detach_mounts=1
 fs.file-max=52706963
 fs.nr_open=52706963
+net.ipv4.neigh.default.gc_stale_time = 120
 # 配置arp cache 大小
 net.ipv4.neigh.default.gc_thresh1=1024
 # 存在于ARP高速缓存中的最少层数，如果少于这个数，垃圾收集器将不会运行。缺省值是128。
 net.ipv4.neigh.default.gc_thresh2=4096
+net.ipv6.neigh.default.gc_thresh2=4096
 # 保存在 ARP 高速缓存中的最多的记录软限制。垃圾收集器在开始收集前，允许记录数超过这个数字 5 秒。缺省值是 512。
-net.ipv4.neigh.default.gc_thresh3=8192
+net.ipv4.neigh.default.gc_thresh3=4096
+net.ipv6.neigh.default.gc_thresh3=4096
 # 保存在 ARP 高速缓存中的最多记录的硬限制，一旦高速缓存中的数目高于此，垃圾收集器将马上运行。缺省值是1024。
 # 以上三个参数，当内核维护的arp表过于庞大时候，可以考虑优化
 net.netfilter.nf_conntrack_max=10485760
@@ -43,3 +46,35 @@ fs.inotify.max_user_watches=524288
 kernel.panic = 10
 kernel.panic_on_oops = 1
 kernel.pid_max=1000000
+net.ipv4.ip_forward = 1
+net.ipv4.conf.default.rp_filter = 0
+net.ipv4.conf.default.accept_source_route = 0
+kernel.core_uses_pid = 1
+kernel.msgmnb = 65536
+kernel.msgmax = 65536
+net.ipv4.conf.all.promote_secondaries = 1
+net.ipv4.conf.default.promote_secondaries = 1
+kernel.softlockup_panic = 1
+kernel.sysrq = 1
+# 不禁用 ipv6
+net.ipv6.conf.all.disable_ipv6 = 0
+net.ipv6.conf.default.disable_ipv6 = 0
+net.ipv6.conf.lo.disable_ipv6 = 0
+kernel.numa_balancing = 0
+kernel.shmmax = 68719476736
+kernel.printk = 5
+# 要求iptables不对bridge的数据进行处理
+net.bridge.bridge-nf-call-arptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_local_reserved_ports = 30000-32767
+vm.oom_dump_tasks = 1
+kernel.ctrl-alt-del = 0
+kernel.kptr_restrict = 1
+net.ipv4.conf.all.rp_filter = 0
+net.ipv4.conf.all.accept_source_route = 0
+fs.protected_hardlinks = 1
+fs.protected_symlinks = 1
+net.ipv4.conf.default.arp_announce = 2
+net.ipv4.conf.lo.arp_announce = 2
+net.ipv4.conf.all.arp_announce = 2

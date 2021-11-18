@@ -28,4 +28,4 @@
     - "{{ kubelet_data_dir }}/pki"
     - "{{ kubelet_data_dir }}/config.yaml"
     - "{{ kubelet_data_dir }}/kubeadm-flags.env"
-  when: inventory_hostname in groups['kube_cluster']
+  when: inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | difference(groups['delete_nodes']))

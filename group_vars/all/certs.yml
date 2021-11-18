@@ -174,20 +174,20 @@ master_certs:
     csr: "{%- if enable_cfssl_certs | bool -%}cs-dev.json{% else %}client{%- endif -%}"
     dir: "{{ k8s_pki_dir }}"
 
-# org 一定要正确，否则认证不过
-# kubectl certificate approve csr-x9t6j
-worker_certs:
-  - name: kubelet
-    cn: "system:node:{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
-    parent_ca: kubernetes-ca
-    org: "system:nodes"
-    kind: client
-    csr: "{%- if enable_cfssl_certs | bool -%}kubelet.json{% else %}kubelet{%- endif -%}"
-    dir: "{{ k8s_pki_dir }}"
-  - name: kube-proxy
-    cn: "system:kube-proxy"
-    parent_ca: kubernetes-ca
-    org: "system:node-proxier"
-    kind: client
-    csr: "{%- if enable_cfssl_certs | bool -%}kube-proxy.json{% else %}kubelet{%- endif -%}"
-    dir: "{{ k8s_pki_dir }}"
+# # org 一定要正确，否则认证不过
+# # kubectl certificate approve csr-x9t6j
+# worker_certs:
+#   - name: kubelet
+#     cn: "system:node:{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
+#     parent_ca: kubernetes-ca
+#     org: "system:nodes"
+#     kind: client
+#     csr: "{%- if enable_cfssl_certs | bool -%}kubelet.json{% else %}kubelet{%- endif -%}"
+#     dir: "{{ k8s_pki_dir }}"
+#   - name: kube-proxy
+#     cn: "system:kube-proxy"
+#     parent_ca: kubernetes-ca
+#     org: "system:node-proxier"
+#     kind: client
+#     csr: "{%- if enable_cfssl_certs | bool -%}kube-proxy.json{% else %}kubelet{%- endif -%}"
+#     dir: "{{ k8s_pki_dir }}"

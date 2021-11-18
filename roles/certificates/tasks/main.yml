@@ -8,7 +8,7 @@
     - "{{ etcd_pki_dir }}"
 
 - name: 创建{{ k8s_pki_dir }}目录
-  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']))"
+  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | difference(groups['delete_nodes']))"
   file:
     name: "{{ item }}"
     state: directory

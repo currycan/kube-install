@@ -64,7 +64,23 @@
     when: startup != 'kubeadm'
     include_tasks: binary/main.yml
 
-  - include_tasks: rbac/rbac.yml
+  - block:
+    - name: 配置 rbac 文件
+      copy:
+        src: "rbac"
+        dest: "{{ kubernetes_etc_dir }}"
+        mode: 0644
+
+    - name: 创建 RBAC 资源
+      shell: >
+        kubectl apply -f "{{ kubernetes_etc_dir }}/rbac"
+      environment:
+        KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+    delegate_to: "{{ groups['kube_masters'][0] }}"
+    run_once: true
+
+  - include_tasks: kube-proxy/main.yml
+  - include_tasks: coredns/main.yml
 
   - name: 添加 kubectl kubeadm 命令自动补全
     lineinfile:

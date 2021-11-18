@@ -10,8 +10,9 @@ kube_master_external_domain:
 
 # kubelet 参数
 kubelet_max_pods: 128
-kube_reserved_enabled: true
-system_reserved_enabled: true
+# 默认关闭，不预留资源，最大限度使用资源
+kube_reserved_enabled: false
+system_reserved_enabled: false
 
 feature_gates:
   # kubectl debug 1.16.0 新增特性 , 默认关闭
@@ -143,3 +144,7 @@ scheduler_extra_volumes:
     hostPath: /etc/kubernetes/pki
     mountPath: /etc/kubernetes/pki
     readOnly: true
+
+kube_proxy:
+  proxy_mode: ipvs
+  scheduler: rr

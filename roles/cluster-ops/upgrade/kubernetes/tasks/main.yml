@@ -46,5 +46,4 @@
       timeout: 300
     with_items:
       - "10248"
-  when:
-    - inventory_hostname in groups['kube_cluster']
+  when: inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | difference(groups['delete_nodes']))

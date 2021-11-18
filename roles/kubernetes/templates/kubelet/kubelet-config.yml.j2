@@ -54,22 +54,31 @@ evictionSoftGracePeriod:
   nodefs.inodesFree: 1m
 evictionMinimumReclaim: {}
 failSwapOn: true
+{% if (kube_reserved_enabled is defined and kube_reserved_enabled) or (system_reserved_enabled is defined and system_reserved_enabled) %}
 cpuManagerPolicy: static
+{% else%}
+cpuManagerPolicy: none
+{% endif %}
 # Node 资源预留
 enforceNodeAllocatable:
 - pods
 {% if kube_reserved_enabled is defined and kube_reserved_enabled %}
 - kube-reserved # 开启 kube 资源预留
 {% endif %}
-{% if  system_reserved_enabled is defined and system_reserved_enabled %}
+{% if system_reserved_enabled is defined and system_reserved_enabled %}
 - system-reserved # 开启 system 资源预留
 {% endif %}
 # Cgroups
 {% if kube_reserved_enabled is defined and kube_reserved_enabled %}
 # kubelet 资源驱逐策略
 kubeReserved:
-  cpu: "100m"
-  memory: "400Mi"
+{% if inventory_hostname in groups['kube_masters'] %}
+  cpu: 200m
+  memory: 512Mi
+{% else %}
+  cpu: 100m
+  memory: 256Mi
+{% endif %}
   ephemeral-storage: "1Gi"
 kubeReservedCgroup: "/kube.slice"  # 指定 kube 资源预留的 cgroup
 {% endif %}
@@ -77,14 +86,19 @@ kubeReservedCgroup: "/kube.slice"  # 指定 kube 资源预留的 cgroup
 {% if system_reserved_enabled is defined and system_reserved_enabled %}
 # 系统资源驱逐策略
 systemReserved:
-  cpu: "200m"
-  memory: "1.5Gi"
+{% if inventory_hostname in groups['kube_masters'] %}
+  cpu: 400m
+  memory: 1.2Gi
+{% else %}
+  cpu: 200m
+  memory: 1Gi
+{% endif %}
   ephemeral-storage: "1Gi"
 systemReservedCgroup: "/system.slice"  # 指定 system 资源预留的
 {% endif %}
 eventBurst: 10
 eventRecordQPS: 5
-{% if feature_gates is defined and feature_gates != None-%}
+{% if feature_gates is defined and feature_gates | length > 0 -%}
 featureGates:
 {% for k,v in feature_gates.items() %}
   {{ k }}: {{ v | lower }}
