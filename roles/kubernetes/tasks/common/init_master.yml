@@ -21,7 +21,7 @@
     shell: >
       cat "{{ kubernetes_etc_dir }}/encryption_config_secret.yml" | grep encryption_config_secret | cut -d ":" -f 2 | sed 's/^[ \t]*//g'
     register: get_encryption_config_secret
-    delegate_to: "{{ groups['kube_masters'][0] }}"
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
 
   - name: 设置 encryption_config_secret 变量
     set_fact:
@@ -41,7 +41,7 @@
 
   - name: 加载 master 节点各组件镜像
     when: startup == 'kubeadm'
-    shell: >
+    command: >
       {% if container_runtime == 'docker' -%}
         docker load -i {{ cache_dir }}/images/master.tar.gz
       {% elif container_runtime == 'containerd' -%}

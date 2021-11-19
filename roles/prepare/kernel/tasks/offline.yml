@@ -5,6 +5,12 @@
     run_once: true
 
   - name: 离线安装 kernel
-    shell: >-
-      rpm -Uvh --nodeps --force {{ cache_dir }}/kernel/*.rpm
+    command: >-
+      rpm -Uvh --nodeps --force *.rpm
+    args:
+      warn: false
+      chdir: "{{ cache_dir }}/kernel"
+    register: kernel_rpm_install
+    failed_when: kernel_rpm_install.rc != 0 and "is already installed" not in kernel_rpm_install.stderr
+    changed_when: kernel_rpm_install.rc == 0
   when: 'fact_kernel_version not in kernel_offlie_version'

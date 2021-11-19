@@ -1,11 +1,13 @@
 - name: 判断执行用户是否存在
-  action: shell /usr/bin/getent passwd {{ item }} | grep {{ item }} | cut -d":" -f6
+  changed_when: true
+  failed_when: false
+  action: shell set -o pipefail && /usr/bin/getent passwd {{ item }} | grep {{ item }} | cut -d":" -f6
   register: user_results
   with_items:
   - "{{ normal_user }}"
 
 - name: 创建 $HOME/.kube/config 配置清单目录
-  when: 'item.stdout | length > 0'
+  when: item.rc == 0
   file:
     name: "{{ item.stdout }}/.kube/"
     state: directory
@@ -18,10 +20,10 @@
     src: "{{ kubernetes_etc_dir }}/admin.conf"
   register: slurp_kubeconfig
   run_once: true
-  delegate_to: "{{ groups['kube_masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
 
 - name: 非 root 用户配置 $HOME/.kube/config
-  when: 'item.stdout | length > 0'
+  when: item.rc == 0
   copy:
     content: "{{ slurp_kubeconfig.content | b64decode }}"
     dest: "{{ item.stdout }}/.kube/config"
@@ -33,7 +35,7 @@
     - "{{ user_results['results'] }}"
 
 - name: 修改文件目录权限
-  when: 'item.stdout | length > 0'
+  when: item.rc == 0
   file:
     path: "{{ item.stdout }}/.kube/"
     state: directory
@@ -45,7 +47,7 @@
     - "{{ user_results['results'] }}"
 
 - name: 添加非 root 用户 kubectl 命令自动补全
-  when: 'item.stdout | length > 0'
+  when: item.rc == 0
   lineinfile:
     dest: "{{ item.stdout }}/.bashrc"
     state: present

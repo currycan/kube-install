@@ -9,7 +9,8 @@
     msg: "节点：{{ inventory_hostname }} {{ ansible_distribution }} 系统不支持使用本脚本升级内核"
 
 - name: 执行命令获取内核版本
-  shell: uname -r
+  changed_when: true
+  command: uname -r
   register: get_kernel_version
 
 - name: 获取系统当前使用内核版本
@@ -26,19 +27,24 @@
 - include_tasks: offline.yml
 
 - name: 设置默认内核为最新安装版本
-  shell: "grub2-set-default 0 && grub2-mkconfig -o /boot/grub2/grub.cfg"
-  ignore_errors: true
+  changed_when: true
+  shell: >-
+    set -o pipefail;
+    grub2-set-default 0 && grub2-mkconfig -o /boot/grub2/grub.cfg
 
 - name: 获取默认内核版本
-  shell: "grubby --default-kernel"
-  ignore_errors: true
+  changed_when: true
+  command: "grubby --default-kernel"
 
 - name: 开启 User namespaces
-  shell: grubby --args="user_namespace.enable=1" --update-kernel="$(grubby --default-kernel)"
-  ignore_errors: true
+  changed_when: true
+  command: grubby --args="user_namespace.enable=1" --update-kernel="$(grubby --default-kernel)"
 
 - name: 卸载 3.10 版本 kernel
-  shell: "yum remove -y kernel*3.10*"
+  yum:
+    name: 'kernel*3.10*"'
+    state: absent
+    disablerepo: "*"
 
 - block:
   - name: 需手动重启服务器

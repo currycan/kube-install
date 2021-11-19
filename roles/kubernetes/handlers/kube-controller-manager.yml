@@ -12,16 +12,8 @@
     state: restarted
     enabled: yes
   register: started_change_controller_manager
-  until: started_change_controller_manager is succeeded
+  until: started_change_controller_manager.status.ActiveState == "active"
   retries: 3
-  delay: "{{ retry_stagger }}"
-
-- name: 以轮询的方式等待 kube-controller-manager 服务启动完成
-  when: started_change_controller_manager is succeeded
-  shell: "systemctl status kube-controller-manager.service | grep Active"
-  register: change_controller_manager_status
-  until: '"running" in change_controller_manager_status.stdout'
-  retries: 2
   delay: "{{ retry_stagger }}"
 
 - name: 检查 kube-controller-manager 服务状态

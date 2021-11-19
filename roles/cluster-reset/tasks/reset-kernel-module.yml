@@ -3,13 +3,15 @@
     name: systemd-modules-load
     state: stopped
     enabled: no
-  ignore_errors: True
+  register: stop_modules_result
+  failed_when: stop_modules_result.failed
 
 - name: 删除内核模块开机加载配置
   file: path=/etc/modules-load.d/10-k8s-modules.conf state=absent
 
 - name: 获取当前内核版本
-  shell: "uname -r"
+  changed_when: true
+  command: "uname -r"
   register: get_kernel_version
 
 - name: 设置内核版本参数
@@ -45,7 +47,7 @@
     - ip_vs_ftp
     - "{{ nf_conntrack }}"
     - sunrpc
-  ignore_errors: true
+  failed_when: false
 
 - name: 删除内核优化
   file:
@@ -56,4 +58,5 @@
     - "99-docker.conf"
 
 - name: 重新加载系统参数
-  shell: "sysctl --system"
+  changed_when: true
+  command: "sysctl --system"

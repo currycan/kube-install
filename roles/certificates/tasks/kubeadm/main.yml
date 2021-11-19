@@ -42,7 +42,7 @@
     - add_masters
 
 - block:
-  - name: "{{ groups['kube_masters'][0] }} 节点生成证书和 kubeconfig 文件"
+  - name: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }} 节点生成证书和 kubeconfig 文件"
     shell: >
       kubeadm init phase certs all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml;
       kubeadm init phase kubeconfig all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml

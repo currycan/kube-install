@@ -24,7 +24,9 @@
     fact_kernel_version: "{{ get_kernel_version.stdout.split('-')[0] }}"
 
 - name: 执行命令获取当前最新可装内核版本
-  shell: >
+  changed_when: true
+  shell: >-
+    set -o pipefail;
     yum --disablerepo="*" --enablerepo="{{ centos7.kernel_repo_name }}" list available | tail -1 | awk -F' ' '{print $2}'
   register: kernel_version
 
@@ -33,7 +35,11 @@
     latest_kernel_version: "{{ kernel_version.stdout }}"
 
 - block:
-  - debug: msg="yum 安装内核，可能需要一定时间。。"
+  - name: debug
+    debug:
+      msg: "yum 安装内核, 可能需要一定时间。。"
+    run_once: true
+
   - name: 安装 kernel
     yum:
       name: "{{ item }}"

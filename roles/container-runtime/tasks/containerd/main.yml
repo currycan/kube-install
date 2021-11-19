@@ -5,8 +5,14 @@
     run_once: true
 
   - name: 离线安装 containerd
-    shell: >-
-      rpm -Uvh --nodeps --force {{ cache_dir }}/containerd/*.rpm
+    command: >-
+      rpm -Uvh --nodeps --force *.rpm
+    args:
+      warn: false
+      chdir: "{{ cache_dir }}/containerd"
+    register: containerd_rpm_install
+    failed_when: containerd_rpm_install.rc != 0 and "is already installed" not in containerd_rpm_install.stderr
+    changed_when: containerd_rpm_install.rc == 0
   when: install_way != 'binary'
 
 - name: 二进制安装 containerd、cni 和 crictl
@@ -22,7 +28,8 @@
     - { src: "{{ cache_dir }}/binary/crictl/", dest: "/usr/bin/"}
 
 - name: crictl 命令自动补全
-  shell: >
+  changed_when: true
+  command: >
     crictl completion bash > /etc/bash_completion.d/crictl;
     source /etc/bash_completion.d/crictl
   args:
@@ -57,16 +64,8 @@
     state: restarted
     enabled: yes
   register: started_containerd
-  until: started_containerd is succeeded
+  until: started_containerd.status.ActiveState == "active"
   retries: 3
-  delay: "{{ retry_stagger }}"
-
-- name: 以轮询的方式等待 containerd 启动完成
-  when: started_containerd is succeeded
-  shell: "systemctl status containerd.service | grep Active"
-  register: containerd_status
-  until: '"running" in containerd_status.stdout'
-  retries: 2
   delay: "{{ retry_stagger }}"
 
 # - name: 获取其他 cni 配置文件

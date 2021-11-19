@@ -24,7 +24,7 @@
       state: restarted
       enabled: yes
     register: started_kubelet
-    until: started_kubelet is succeeded
+    until: started_kubelet.status.ActiveState == "active"
     retries: 3
     delay: "{{ retry_stagger }}"
   when: inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)

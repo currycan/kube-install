@@ -24,7 +24,8 @@
     msg: "移除 etcd 节点后，剩余 etcd 节点数量应大于等于 1。"
 
 - name: 获取将要移除的 etcd 节点 member id
-  shell: >
+  changed_when: true
+  command: >
     source {{ profile_dir }}/etcd.sh;
     etcd3 member list | grep {{ inventory_hostname }} | cut -d',' -f1
   args:
@@ -33,8 +34,9 @@
   register: etcd_member_id
 
 - name: 从 etcd 集群中移除 {{ inventory_hostname }} 节点
-  when: etcd_member_id.stdout != ''
-  shell: >
+  when: etcd_member_id.stdout | length > 0
+  changed_when: true
+  command: >
     source {{ profile_dir }}/etcd.sh;
     etcd3 member remove {{ etcd_member_id.stdout }}
   args:
@@ -42,11 +44,17 @@
   delegate_to: "{{ (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first) }}"
 
 - name: 停止运行 etcd
-  systemd: name=etcd state=stopped enabled=no
-  ignore_errors: True
+  systemd:
+    name: etcd
+    state: stopped
+    enabled: no
+  register: stop_etcd_result
+  failed_when: stop_etcd_result.failed
 
 - name: 删除所有 etcd 证书及相关配置
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items:
     - "{{ etcd_data_dir }}"
     - "{{ etcd_wal_dir }}"

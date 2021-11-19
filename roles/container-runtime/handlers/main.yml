@@ -11,16 +11,8 @@
     state: restarted
     enabled: yes
   register: started_docker
-  until: started_docker is succeeded
+  until: started_docker.status.ActiveState == "active"
   retries: 3
-  delay: "{{ retry_stagger }}"
-
-- name: 以轮询的方式等待 docker 启动完成
-  when: started_docker is succeeded
-  shell: "systemctl status docker.service | grep Active"
-  register: docker_status
-  until: '"running" in docker_status.stdout'
-  retries: 2
   delay: "{{ retry_stagger }}"
 
 - name: 确认 containerd 运行状态
@@ -37,14 +29,6 @@
     state: restarted
     enabled: yes
   register: started_containerd
-  until: started_containerd is succeeded
+  until: started_containerd.status.ActiveState == "active"
   retries: 3
-  delay: "{{ retry_stagger }}"
-
-- name: 以轮询的方式等待 containerd 启动完成
-  when: started_containerd is succeeded
-  shell: "systemctl status containerd.service | grep Active"
-  register: containerd_status
-  until: '"running" in containerd_status.stdout'
-  retries: 2
   delay: "{{ retry_stagger }}"

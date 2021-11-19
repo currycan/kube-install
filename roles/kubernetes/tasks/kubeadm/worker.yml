@@ -30,7 +30,7 @@
     # - name: 生成 worker 节点 join token
     #   shell: >
     #     kubeadm token create --print-join-command
-    #   delegate_to: "{{ groups['kube_masters'][0] }}"
+    #   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
     #   register: worker_kubeadm_join_cmd
 
     # - set_fact:

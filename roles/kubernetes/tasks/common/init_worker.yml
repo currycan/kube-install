@@ -1,6 +1,6 @@
 - block:
   - name: worker 节点加载 coredns 镜像
-    shell: >
+    command: >
       {% if container_runtime == 'docker' -%}
         docker load -i {{ cache_dir }}/images/worker.tar.gz
       {% elif container_runtime == 'containerd' -%}

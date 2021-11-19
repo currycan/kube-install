@@ -46,18 +46,18 @@
         - { src: "kubelet/kubelet-config-rbac.yaml", dest: "{{ rbac_dir }}/kubelet-rbac/kubelet-config-rbac.yaml" }
 
     - name: 创建 kubelet rbac 资源
-      shell: >
+      command: >
         kubectl apply -f "{{ rbac_dir }}/kubelet-rbac"
       environment:
         KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
-    delegate_to: "{{ groups['kube_masters'][0] }}"
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
     run_once: true
 
   - name: 创建 kubelet bootstrap secret
-    shell: >
+    command: >
       kubectl apply -f {{ rbac_dir }}/kubelet-bootstrap-secret.yaml
     environment:
-        KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+      KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
     run_once: true
     delegate_to: "{{ groups['masters'][0] }}"
-  when: "inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']))"
+  when: "inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)"

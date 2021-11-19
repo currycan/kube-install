@@ -40,8 +40,6 @@ ExecStart=/usr/bin/kube-controller-manager \
   --root-ca-file={{ kubernetes_ca }} \
   --service-account-private-key-file={{ sa_private_key }} \
   --service-cluster-ip-range={{ service_subnet }} \
-  --tls-cert-file={{ controller_cert_manager }} \
-  --tls-private-key-file={{ controller_cert_manager_key }} \
   --use-service-account-credentials=true \
   --v=2
 

@@ -11,23 +11,26 @@
 
 - block:
   - name: 获取 etcd member 状态
-    shell: >
-      ETCDCTL_API=3 etcdctl \
-      --cert {{ etcd_cert_healthcheck_client }} \
-      --key  {{ etcd_cert_healthcheck_client_key }} \
+    command: >-
+      etcdctl --endpoints {{ etcd_servers }} \
       --cacert {{ etcd_ca }} \
-      --endpoints {{ etcd_servers }} \
+      --key  {{ etcd_cert_healthcheck_client_key }} \
+      --cert {{ etcd_cert_healthcheck_client }} \
       member list | grep {{ inventory_hostname }};
+    environment:
+      ETCDCTL_API: 3
     register: get_etcd_member
 
   - name: 新节点 加入 etcd 集群中
-    when: get_etcd_member.stdout == ''
-    shell: >-
-      ETCDCTL_API=3 etcdctl \
-      --cert {{ etcd_cert_healthcheck_client }} \
-      --key  {{ etcd_cert_healthcheck_client_key }} \
+    when: get_etcd_member.stdout | length == 0
+    changed_when: true
+    command: >-
+      etcdctl --endpoints {{ etcd_servers }} \
       --cacert {{ etcd_ca }} \
-      --endpoints {{ etcd_servers }} \
+      --key  {{ etcd_cert_healthcheck_client_key }} \
+      --cert {{ etcd_cert_healthcheck_client }} \
       member add {{ hostvars[inventory_hostname].ansible_hostname | lower }} --peer-urls={{ etcd_listen_peer_urls }}
-  delegate_to: "{{ (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first) }}"
+    environment:
+      ETCDCTL_API: 3
+  delegate_to: "{{ groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first }}"
   when: inventory_hostname in (groups['add_etcds'] | difference(groups['delete_etcds']) | unique )

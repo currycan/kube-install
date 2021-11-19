@@ -16,7 +16,10 @@
     delegate_to: "{{ (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first) }}"
 
   - name: 创建 etcd 证书存放目录
-    file: path={{ etcd_pki_dir }} state=directory
+    file:
+      path: {{ etcd_pki_dir }}
+      state: directory
+      mode: 0644
 
   - name: 该节点运行 etcd服务，恢复 etcd 证书到改节点
     copy:

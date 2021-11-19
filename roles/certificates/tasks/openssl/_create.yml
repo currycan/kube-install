@@ -14,10 +14,10 @@
       - "{{ kubernetes_ca_key }}"
     register: slurp_kubernetes_ca_certs
     run_once: true
-    delegate_to: "{{ groups['kube_masters'][0] }}"
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
 
   - name: 分发 kubernetes CA 证书到各节点
-    when: inventory_hostname != groups['kube_masters'][0]
+    when: inventory_hostname != groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first
     copy:
       dest: "{{ item.source }}"
       content: "{{ item.content | b64decode }}"
@@ -52,8 +52,8 @@
     state: absent
   with_items: "{{ kubernetes_ca_key }}"
   when:
-    - inventory_hostname in (groups['kube_nodes'] | difference(groups['delete_nodes']))
-    - inventory_hostname not in (groups['kube_masters'] | difference(groups['delete_masters']))
+    - inventory_hostname in (groups['kube_nodes'] | difference(groups['delete_nodes']) | unique)
+    - inventory_hostname not in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)
     - check_cert_key_files['results'][0].item.org is defined
     - check_cert_key_files['results'][0].item.org == "system:nodes"
 - name: 获取待删除的证书临时文件

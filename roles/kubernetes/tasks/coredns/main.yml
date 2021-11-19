@@ -12,9 +12,10 @@
     - { src: "coredns/nodelocaldns.yaml", dest: "{{ addons_dir }}/coredns/nodelocaldns.yaml" }
 
 - name: 部署 coredns
-  shell: >
+  changed_when: true
+  command: >
     kubectl apply -f "{{ addons_dir }}/coredns/"
   environment:
     KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
-  delegate_to: "{{ groups['kube_masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
   run_once: true

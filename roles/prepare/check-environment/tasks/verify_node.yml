@@ -10,7 +10,8 @@
     msg: "节点：{{ inventory_hostname }} 期望为systemd类型操作系统，实际获取：{{ ansible_service_mgr }}，安装需求校验不通过。"
 
 - name: 获取当前内核版本
-  shell: "uname -r"
+  changed_when: false
+  command: "uname -r"
   register: get_kernel_version
 
 - name: 设置内核版本参数

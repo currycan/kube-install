@@ -4,7 +4,8 @@
       name: kubelet
       state: stopped
       enabled: yes
-    ignore_errors: true
+    register: stop_kubelet_result
+    failed_when: stop_kubelet_result.failed
 
   - name: 读取 kubernetes 备份数据
     find:
@@ -23,6 +24,7 @@
       kubernetes_latest_back_dir: "{{ kubernetes_back_dirs.files | sort(attribute='ctime',reverse=true) | first }}"
 
   - name: 清理相关目录
+    failed_when: false
     file:
       name: "{{ item }}"
       state: absent
@@ -32,12 +34,12 @@
     - "{{ kube_proxy_data_dir }}"
     - "{{ systemd_service_dir }}/kubelet.service.d"
     - "{{ ansible_env.HOME }}/.kube"
-    ignore_errors: true
 
   - name: 创建 kubernetes 相关目录
     file:
       name: "{{ item }}"
       state: directory
+      mode: 0644
     with_items:
     - "{{ kubernetes_etc_dir }}"
     - "{{ kubelet_data_dir }}"
@@ -62,6 +64,7 @@
     copy:
       src: "{{ kubernetes_etc_dir }}/backup-k8s/service/"
       dest: "{{ systemd_service_dir }}"
+      mode: 0644
       remote_src: yes
 
   - name: 恢复集群内节点 kubelet 数据文件
@@ -104,7 +107,7 @@
       - "{{ kubernetes_etc_dir }}/admin.conf"
     register: slurp_kubeconfig
     run_once: true
-    delegate_to: "{{ groups['kube_masters'][0] }}"
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
 
   - name: 配置 kubeconfig admin 文件到 $HOME/.kube/config
     copy:

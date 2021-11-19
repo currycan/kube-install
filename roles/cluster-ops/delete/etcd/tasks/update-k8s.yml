@@ -14,7 +14,7 @@
 
 - name: "更新第一个 master 节点：{{ inventory_hostname }}"
   when: inventory_hostname == (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first)
-  shell: >-
+  command: >-
     kubeadm upgrade apply --config={{ kubernetes_etc_dir }}/kubeadm-config.yaml \
       --ignore-preflight-errors=CoreDNSUnsupportedPlugins \
       --ignore-preflight-errors=CoreDNSMigration --force
@@ -23,7 +23,7 @@
   when:
     - inventory_hostname in groups['kube_masters']
     - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first)
-  shell: >-
+  command: >-
     kubeadm upgrade node {% if kube_version.split('.')[1]|int == 14 %}experimental-control-plane{% endif %} \
       --ignore-preflight-errors=CoreDNSUnsupportedPlugins \
       --ignore-preflight-errors=CoreDNSMigration

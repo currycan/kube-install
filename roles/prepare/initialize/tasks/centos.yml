@@ -9,7 +9,8 @@
     disablerepo: "*"
 
 - name: 临时关闭 selinux
-  shell: "setenforce 0"
+  command: "setenforce 0"
+  changed_when: true
   failed_when: false
 
 - name: 永久关闭 selinux
@@ -35,7 +36,8 @@
 #     state: present
 
 - name: 判断依赖组件是否安装
-  shell: >
+  shell: >-
+    set -o pipefail;
     yum_installed_num=0;
     for rpm in {socat,conntrack,ebtables,ipset};
     do
@@ -54,8 +56,14 @@
     run_once: true
 
   - name: 离线安装基础依赖
-    shell: >-
-      rpm -Uvh --nodeps --force {{ cache_dir }}/dependence/*.rpm
+    command: >-
+      rpm -Uvh --nodeps --force *.rpm
+    args:
+      warn: false
+      chdir: "{{ cache_dir }}/dependence"
+    register: dependence_rpm_install
+    failed_when: dependence_rpm_install.rc != 0 and "is already installed" not in dependence_rpm_install.stderr
+    changed_when: dependence_rpm_install.rc == 0
 
   # - name: yum 安装基础软件包
   #   package:

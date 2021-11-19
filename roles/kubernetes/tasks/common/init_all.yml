@@ -1,6 +1,6 @@
 - block:
   - name: 所有 kube_cluster 节点加载依赖镜像
-    shell: >
+    command: >
       {% if container_runtime == 'docker' -%}
         docker load -i {{ cache_dir }}/images/all.tar.gz
       {% elif container_runtime == 'containerd' -%}

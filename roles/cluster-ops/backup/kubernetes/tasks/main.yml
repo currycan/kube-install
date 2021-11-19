@@ -37,6 +37,7 @@
     archive:
       path: "{{ kubernetes_latest_back_dir.path }}/*"
       dest: "{{ kubernetes_latest_back_dir.path }}.tar.gz"
+      mode: 0644
       format: gz
       force_archive: true
 

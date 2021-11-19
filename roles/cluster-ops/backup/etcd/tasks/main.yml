@@ -94,6 +94,7 @@
     archive:
       path: "{{ etcd_latest_back_dir.path }}/*"
       dest: "{{ etcd_latest_back_dir.path }}.tar.gz"
+      mode: 0644
       format: gz
       force_archive: true
 

@@ -9,7 +9,8 @@
     - kubeadm
 
 - name: 当前会话加载 kubectl kubeadm 命令，并自动补全
-  shell: >
+  changed_when: true
+  command: >
     {{ item }} completion bash > /etc/bash_completion.d/{{ item }};
     source {{ ansible_env.HOME }}/.bash_profile
   args:
@@ -22,6 +23,7 @@
   file:
     name: "{{ item }}"
     state: directory
+    mode: 0644
   with_items:
   - "{{ ansible_env.HOME }}/.kube/"
   - "{{ kubernetes_etc_dir }}"

@@ -27,34 +27,18 @@
   - name: 设置 bootstrap_token 变量
     set_fact:
       bootstrap_token: "{{ get_bootstrap_token.stdout }}"
-  delegate_to: "{{ groups['kube_masters'][0] }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
 
 - block:
-  - name: master 节点
-    block:
-    - name: 判断 master 节点三大组件的 kubeconfig 文件是否存在
-      stat:
-        path: "{{ item.path }}"
-      with_items: "{{ kube_config.contexts.master }}"
-      register: master_kubeconfig_files
+  - name: 判断集群依赖 kubeconfig 文件是否存在
+    stat:
+      path: "{{ item.path }}"
+    with_items: "{{ kube_config.contexts }}"
+    register: check_kubeconfig_files
 
-    - name: 创建 master 节点三大组件 kubeconfig 文件
-      when: not item.stat.exists
-      include_tasks: "_create.yml"
-      with_items: "{{ master_kubeconfig_files['results'] }}"
-    when: inventory_hostname in groups['kube_masters']
-
-  - name: 所有 kube cluster 节点
-    block:
-    - name: 判断 kubelet bootstrappers kubeconfig 文件是否存在
-      stat:
-        path: "{{ item.path }}"
-      with_items: "{{ kube_config.contexts.all }}"
-      register: all_kubeconfig_files
-
-    - name: 创建 kubelet bootstrappers kubeconfig 文件
-      include_tasks: "_create.yml"
-      with_items: "{{ all_kubeconfig_files['results'] }}"
-      when: not item.stat.exists
-    when: inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | difference(groups['delete_nodes']))
-  when: enable_openssl_certs | bool or enable_cfssl_certs | bool
+  - name: 创建集群依赖 kubeconfig 文件
+    when: not item.stat.exists
+    include_tasks: "_create.yml"
+    with_items: "{{ check_kubeconfig_files['results'] }}"
+  run_once: true
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"

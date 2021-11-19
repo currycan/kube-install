@@ -57,16 +57,8 @@
       state: restarted
       enabled: yes
     register: started_etcd
-    until: started_etcd is succeeded
+    until: started_etcd.status.ActiveState == "active"
     retries: 3
-    delay: "{{ retry_stagger }}"
-
-  - name: 以轮询的方式等待 etcd 启动完成
-    when: started_etcd is succeeded
-    shell: "systemctl status etcd.service | grep Active"
-    register: etcd_status
-    until: '"running" in etcd_status.stdout'
-    retries: 2
     delay: "{{ retry_stagger }}"
 
   - name: 检查 etcd 状态

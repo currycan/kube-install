@@ -1,7 +1,7 @@
 - name: 所有 kube_cluster 节点渲染 kubeadm 的配置文件
   template:
     src: >-
-      {% if inventory_hostname == groups['kube_masters'][0] -%}
+      {% if inventory_hostname == groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first -%}
       kubeadm/kubeadm-controlplane-init.yaml.j2
       {%- elif inventory_hostname in groups['kube_masters'] -%}
       kubeadm/kubeadm-controlplane-join.yaml.j2
@@ -14,7 +14,8 @@
     mode: 0644
 
 - name: 和并 kubelet-config.yml 和 kube-proxy-config.yaml 至 kubeadm-config.yaml
-  shell: >
+  changed_when: true
+  command: >
     cat {{ kubelet_data_dir }}/config.yaml >> {{ kubernetes_etc_dir }}/kubeadm-config.yaml;
     cat {{ kube_proxy_data_dir }}/config.yaml >> {{ kubernetes_etc_dir }}/kubeadm-config.yaml;
 

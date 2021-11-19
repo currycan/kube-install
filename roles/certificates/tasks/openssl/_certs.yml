@@ -1,6 +1,6 @@
 - name: 创建 {{ out_item.item.dir }}/{{ out_item.item.name }}.key 私钥
   when: not out_item.stat.exists
-  shell: >
+  command: >
     openssl genrsa -out {{ out_item.item.dir }}/{{ out_item.item.name }}.key {{ cert_key_size }}
 
 - name: 判断 {{ out_item.item.dir }}/{{ out_item.item.name }}.crt 证书是否存在
@@ -11,7 +11,7 @@
 - block:
   - name: 签发 {{ out_item.item.dir }}/{{ out_item.item.name }}.crt CA 根证书
     when: out_item.item.kind == "ca"
-    shell: >-
+    command: >-
       openssl req -x509 -new -nodes -extensions {{ out_item.item.kind }} \
         -subj "/CN={{ out_item.item.cn }}/{%- if out_item.item.org is defined -%}O={{ out_item.item.org }}{% else %}{%- endif -%}" \
         -config {{ kube_openssl_cnf }}  \
@@ -21,7 +21,7 @@
 
   - name: 创建 {{ out_item.item.dir }}/{{ out_item.item.name }}.csr 证书请求文件
     when: out_item.item.kind != "ca"
-    shell: >-
+    command: >-
       openssl req -new \
         -subj "/CN={{ out_item.item.cn }}/{%- if out_item.item.org is defined -%}O={{ out_item.item.org }}{% else %}{%- endif -%}" \
         -key {{ out_item.item.dir }}/{{ out_item.item.name }}.key \
@@ -29,7 +29,7 @@
 
   - name: 生成 {{ out_item.item.dir }}/{{ out_item.item.name }}.crt 证书
     when: out_item.item.kind != "ca"
-    shell: >-
+    command: >-
       openssl x509 -req -CAcreateserial -extensions {{ out_item.item.kind }} \
         {% if 'etcd-ca' == out_item.item.parent_ca -%}
         -extfile {{ etcd_openssl_cnf }} \

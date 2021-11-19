@@ -23,13 +23,14 @@
     - item.fstype != fstype
   filesystem:
     dev: "{{ disk_dev.device + disk_dev.partition_number|string }}"
-    fstype: "{{fstype }}"
+    fstype: "{{ fstype }}"
   with_items: "{{ parted_result.partitions }}"
 
 - name: 创建分区挂载目录
   file:
     dest: "{{ item }}"
     state: directory
+    mode: 0644
   with_items:
     - "{{ disk_dev.mount_dir }}"
     - "{{ disk_dev.sub_dir }}"
@@ -38,7 +39,7 @@
   mount:
     path: "{{ disk_dev.mount_dir }}"
     src: "{{ disk_dev.device + disk_dev.partition_number|string }}"
-    fstype: "{{fstype }}"
+    fstype: "{{ fstype }}"
     state: mounted
     opts: 'defaults,nofail'
 
@@ -46,6 +47,7 @@
   file:
     dest: "{{ disk_dev.mount_dir }}/{{ item.split('/')[-1] }}"
     state: directory
+    mode: 0644
   with_items:
     - "{{ disk_dev.sub_dir }}"
 

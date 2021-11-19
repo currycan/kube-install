@@ -12,16 +12,8 @@
     state: restarted
     enabled: yes
   register: started_apiserver
-  until: started_apiserver is succeeded
+  until: started_apiserver.status.ActiveState == "active"
   retries: 3
-  delay: "{{ retry_stagger }}"
-
-- name: 以轮询的方式等待 kube-apiserver 服务启动完成
-  when: started_apiserver is succeeded
-  shell: "systemctl status kube-apiserver.service | grep Active"
-  register: apiserver_status
-  until: '"running" in apiserver_status.stdout'
-  retries: 2
   delay: "{{ retry_stagger }}"
 
 - name: 检查 kube-apiserver 服务状态

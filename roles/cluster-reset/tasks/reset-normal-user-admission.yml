@@ -1,10 +1,13 @@
 - name: 判断执行用户是否存在
-  action: shell /usr/bin/getent passwd {{ item }} | /usr/bin/wc -l | tr -d ''
+  changed_when: true
+  failed_when: false
+  action: shell set -o pipefail && /usr/bin/getent passwd {{ item }} | /usr/bin/wc -l | tr -d ''
   register: user_exist
   with_items:
   - "{{ normal_user }}"
 
 - name: 清理 kubectl completion env
+  when: item.rc == 0
   lineinfile:
     dest: "/home/{{ item.item }}/.bashrc"
     state: absent
@@ -13,7 +16,9 @@
   - "{{ user_exist['results'] }}"
 
 - name: 删除 kubeconfig 认证文件
-  when: 'item.stdout != "0"'
-  file: path="/home/{{ item.item }}/.kube" state=absent
+  when: item.rc == 0
+  file:
+    path: "/home/{{ item.item }}/.kube"
+    state: absent
   with_items:
   - "{{ user_exist['results'] }}"
