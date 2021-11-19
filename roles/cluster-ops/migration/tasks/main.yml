@@ -4,11 +4,10 @@
       name: etcd
       state: stopped
       enabled: yes
-    ignore_errors: true
 
   - name: 读取本地 etcd 备份文件
     find:
-      paths: "{{ etcd_bak_data  }}"
+      paths: "{{ etcd_data_bak_dir  }}"
       patterns: "*.db"
     register: etcd_back_dirs
     delegate_to: localhost
@@ -16,7 +15,7 @@
   - name: 校验 etcd 备份文件是否存在
     assert:
       that: etcd_back_dirs.files|length >= 1
-      msg: "未获取到节点：{{ inventory_hostname }} 的任何备份文件，请检查目录：{{ etcd_bak_data  }} 中是否有该节点备份文件。"
+      msg: "未获取到节点：{{ inventory_hostname }} 的任何备份文件，请检查目录：{{ etcd_data_bak_dir  }} 中是否有该节点备份文件。"
 
   - name: 获取最新 etcd 备份文件
     set_fact:
@@ -34,14 +33,16 @@
     file:
       name: "{{ kubernetes_etc_dir }}/backup-etcd/"
       state: directory
+      mode: 0644
 
   - name: 分发备份文件到各节点
     copy:
       src: "{{ etcd_latest_back_dir.path }}"
       dest: "{{ kubernetes_etc_dir }}/backup-etcd/etcd-snapshot-latest.db"
+      mode: 0644
 
   - name: 恢复 etcd 数据
-    shell: >
+    command: >
       etcdctl snapshot restore \
       {{ kubernetes_etc_dir }}/backup-etcd/etcd-snapshot-latest.db \
       --data-dir={{ etcd_data_dir }} \

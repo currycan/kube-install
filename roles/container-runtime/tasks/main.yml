@@ -22,7 +22,8 @@
     mode: 0644
 
 - name: sysctl 加载 bridge-netfilter 和 ip-forward 系统变量
-  shell: "sysctl -p /etc/sysctl.d/99-cri.conf"
+  changed_when: true
+  command: "sysctl -p /etc/sysctl.d/99-cri.conf"
 
 - include_tasks: "containerd/main.yml"
   when: inventory_hostname in ((groups['deploy'] + groups['kube_cluster'])| unique)

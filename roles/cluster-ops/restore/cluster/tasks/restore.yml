@@ -1,11 +1,12 @@
 - block:
   - name: 停止 kubelet 运行
-    service:
+    systemd:
       name: kubelet
-      state: stopped
+      daemon_reload: yes
+      state: restarted
       enabled: yes
     register: stop_kubelet_result
-    failed_when: stop_kubelet_result.failed
+    failed_when: false
 
   - name: 读取 kubernetes 备份数据
     find:
@@ -31,7 +32,6 @@
     with_items:
     - "{{ kubernetes_etc_dir }}"
     - "{{ kubelet_data_dir }}"
-    - "{{ kube_proxy_data_dir }}"
     - "{{ systemd_service_dir }}/kubelet.service.d"
     - "{{ ansible_env.HOME }}/.kube"
 
@@ -43,7 +43,6 @@
     with_items:
     - "{{ kubernetes_etc_dir }}"
     - "{{ kubelet_data_dir }}"
-    - "{{ kube_proxy_data_dir }}"
     - "{{ systemd_service_dir }}/kubelet.service.d"
     - "{{ ansible_env.HOME }}/.kube"
     - /backup-cluster-tmp
@@ -74,12 +73,9 @@
       mode: 0644
       remote_src: yes
 
-  - name: 恢复集群内节点 kube-proxy 配置文件
-    copy:
-      src: "{{ kubernetes_etc_dir }}/backup-k8s/kube-proxy/"
-      dest: "{{ kube_proxy_data_dir }}"
-      mode: 0644
-      remote_src: yes
+  - name: systemctl 安装恢复
+    include_tasks: systemctl.yml
+    when: startup != 'kubeadm'
 
   - name: 启动 kubelet
     systemd:

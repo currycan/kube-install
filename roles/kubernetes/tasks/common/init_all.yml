@@ -37,15 +37,3 @@
       - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
       - { src: "kubelet/kubelet-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
       # - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
-
-  - name: 渲染 kube-proxy 相关配置文件
-    when: startup != 'kubeadm'
-    template:
-      src: "{{ item.src }}.j2"
-      dest: "{{ item.dest }}"
-      owner: "root"
-      group: "root"
-      mode: "0644"
-    with_items:
-      - { src: "kube-proxy/kube-proxy.service", dest: "{{ systemd_service_dir }}/kube-proxy.service" }
-  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']))"

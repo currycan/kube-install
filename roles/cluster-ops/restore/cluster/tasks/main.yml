@@ -10,7 +10,7 @@
 
 - name: 当前会话加载 kubectl kubeadm 命令，并自动补全
   changed_when: true
-  command: >
+  shell: >
     {{ item }} completion bash > /etc/bash_completion.d/{{ item }};
     source {{ ansible_env.HOME }}/.bash_profile
   args:
@@ -38,4 +38,4 @@
   include_tasks: restore.yml
 
 - name: 普通用户配置集群访问权限
-  include_tasks: "{{ inventory_dir }}/roles/k8s-setup/tasks/common/normal-user-admission.yml"
+  include_tasks: "{{ inventory_dir }}/roles/kubernetes/tasks/common/normal-user-admission.yml"

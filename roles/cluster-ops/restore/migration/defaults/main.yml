@@ -1,1 +1,0 @@
-etcd_bak_data: "{{ (playbook_dir + '/etcd-backup') | realpath  }}"

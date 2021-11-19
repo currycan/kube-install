@@ -1,6 +1,10 @@
 - block:
-  - name: 备份 kubeadm 安装模式配置文件
-    include_tasks: kubeadm.yml
+  - name: 备份安装模式配置文件
+    include_tasks: all.yml
+
+  - name: 备份 systemctl 安装模式配置文件
+    when: startup != 'kubeadm'
+    include_tasks: systemctl.yml
 
   - name: 清理临时文件目录
     file:

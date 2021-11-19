@@ -1,0 +1,50 @@
+- block:
+  - name: 创建 master 节点各组件所需目录
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: 0644
+    with_items:
+    - "{{ kubernetes_log_dir }}/audit"
+    - "{{ kubernetes_log_dir }}/kube-apiserver"
+    - "{{ kubernetes_log_dir }}/kube-controller-manager"
+    - "{{ kubernetes_log_dir }}/kube-scheduler"
+
+  - name: 恢复 logrotate 配置
+    copy:
+      src: "{{ kubernetes_etc_dir }}/backup-k8s/logrotate/"
+      dest: "/etc/logrotate.d/"
+      mode: 0644
+      remote_src: yes
+
+  - name: 启动 kubernetes master节点 三大核心组件，并设置开机启动
+    systemd:
+      name: "{{ item }}"
+      daemon_reload: yes
+      state: restarted
+      enabled: yes
+    with_items:
+      - kube-apiserver
+      - kube-controller-manager
+      - kube-scheduler
+
+  - include_tasks: "{{ inventory_dir }}/roles/kubernetes/tasks/common/check_master_status.yml"
+
+  - block:
+    - name: 创建 kubelet rbac 资源
+      command: >
+        kubectl apply -f "{{ rbac_dir }}/kubelet-rbac"
+      environment:
+        KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+    run_once: true
+
+  - name: 创建 kubelet bootstrap secret
+    command: >
+      kubectl apply -f {{ rbac_dir }}/kubelet-bootstrap-secret.yaml
+    environment:
+      KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+    run_once: true
+    delegate_to: "{{ groups['masters'][0] }}"
+  when:
+    - inventory_hostname in (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique)

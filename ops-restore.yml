@@ -32,6 +32,5 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
   - container-runtime
-  - load-image
   - cluster-ops/restore/etcd
   - cluster-ops/restore/cluster

@@ -4,7 +4,7 @@
       name: etcd
       state: stopped
       enabled: yes
-    ignore_errors: true
+    failed_when: false
 
   - name: 读取 etcd 备份压缩文件
     find:
@@ -35,6 +35,7 @@
     file:
       name: "{{ item }}"
       state: directory
+      mode: 0644
     with_items:
     - "{{ etcd_pki_dir }}"
     - /backup-cluster-tmp
@@ -67,6 +68,7 @@
       src: "{{ etcd_latest_back_file.path }}"
       dest: "{{ kubernetes_etc_dir }}/backup-etcd/etcd-snapshot-latest.db"
       remote_src: yes
+      mode: 0644
 
   - name: 恢复 etcd service 文件
     copy:
@@ -104,7 +106,7 @@
       remote_src: yes
 
   - name: 恢复 etcd 数据
-    shell: >
+    command: >
       etcdctl snapshot restore \
       {{ kubernetes_etc_dir }}/backup-etcd/etcd-snapshot-latest.db \
       --data-dir={{ etcd_data_dir }} \
