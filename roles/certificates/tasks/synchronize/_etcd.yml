@@ -1,27 +1,55 @@
-- name: 获取 etcd 相关证书
-  slurp:
-    src: "{{ item }}"
-  with_items:
-    - "{{ etcd_ca }}"
-    - "{{ etcd_ca_key }}"
-    - "{{ etcd_cert_server }}"
-    - "{{ etcd_cert_server_key }}"
-    - "{{ etcd_cert_peer }}"
-    - "{{ etcd_cert_peer_key }}"
-    - "{{ etcd_cert_healthcheck_client }}"
-    - "{{ etcd_cert_healthcheck_client_key }}"
-  register: slurp_etcd_certs
-  run_once: true
-  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+- block:
+  - name: 获取 etcd 相关证书
+    slurp:
+      src: "{{ item }}"
+    with_items:
+      - "{{ etcd_ca }}"
+      - "{{ etcd_ca_key }}"
+      - "{{ etcd_cert_server }}"
+      - "{{ etcd_cert_server_key }}"
+      - "{{ etcd_cert_peer }}"
+      - "{{ etcd_cert_peer_key }}"
+      - "{{ etcd_cert_healthcheck_client }}"
+      - "{{ etcd_cert_healthcheck_client_key }}"
+    register: slurp_etcd_certs
+    run_once: true
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
+
+  - block:
+    - name: 创建 etcd 证书存放目录
+      file:
+        path: "{{ etcd_pki_dir }}"
+        state: directory
+        mode: 0644
+
+    - name: 分发 etcd 相关证书到各节点
+      copy:
+        dest: "{{ item.source }}"
+        content: "{{ item.content | b64decode }}"
+        owner: root
+        group: root
+        mode: 0644
+      no_log: true
+      with_items: "{{ slurp_etcd_certs.results }}"
+    when:
+      - inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)
+      - inventory_hostname != (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first)
+  when: groups['add_etcds'] | length == 0
 
 - block:
-  - name: 创建 etcd 证书存放目录
-    file:
-      path: "{{ etcd_pki_dir }}"
-      state: directory
-      mode: 0644
+  - name: 新增 etcd 节点，获取更新后的相关证书
+    slurp:
+      src: "{{ item }}"
+    with_items:
+      - "{{ etcd_cert_server }}"
+      - "{{ etcd_cert_server_key }}"
+      - "{{ etcd_cert_peer }}"
+      - "{{ etcd_cert_peer_key }}"
+    register: slurp_add_etcd_certs
+    run_once: true
+    delegate_to: "{{ groups['add_etcds'][0] }}"
 
-  - name: 分发 etcd 相关证书到 etcd 节点
+  - name: 分发 etcd 相关证书到各节点
     copy:
       dest: "{{ item.source }}"
       content: "{{ item.content | b64decode }}"
@@ -29,6 +57,8 @@
       group: root
       mode: 0644
     no_log: true
-    with_items: "{{ slurp_etcd_certs.results }}"
-  when:
-  - inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)
+    with_items: "{{ slurp_add_etcd_certs.results }}"
+    when:
+      - inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)
+      - inventory_hostname != groups['add_etcds'][0]
+  when: groups['add_etcds'] | length > 0

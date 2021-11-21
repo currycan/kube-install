@@ -1,15 +1,23 @@
-- name: master 节点重新配置参数
-  when: "groups['add_masters']|length > 0"
-  systemd:
-    name: etcd
-    daemon_reload: yes
-    state: restart
-    enabled: yes
+- block:
+  - name: 同步 {{ k8s_pki_dir }} 文件到新增节点
+    copy:
+      src: "{{ k8s_pki_dir }}/"
+      dest: "{{ k8s_pki_dir }}/"
+      mode: 0644
 
-- name: 新节点部署服务
-  when:
-    - "groups['add_masters']|length > 0"
-    - inventory_hostname in (groups['add_masters'] | difference(groups['delete_masters']) | unique )
+  - name: 删除 master apiserver 证书，添加新节点重新生成
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ apiserver_cert }}"
+      - "{{ apiserver_cert_key }}"
+  when: inventory_hostname in (groups['add_masters'] | difference(groups['delete_masters']) | unique )
+
+- name: 重新生成 master apiserver 证书
+  include_role:
+    name: "{{ inventory_dir }}/roles/certificates"
+
+- name: 重新调整 kubernetes 集群
   include_role:
     name: "{{ inventory_dir }}/roles/kubernetes"
-    tasks_from: k8s-setup/install/tasks/common/tools.yml

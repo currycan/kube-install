@@ -1,9 +1,11 @@
 - block:
-  - name: 确认 etcd 已停止运行
-    service:
+  - name: 停止运行 etcd
+    systemd:
       name: etcd
+      daemon_reload: yes
       state: stopped
       enabled: yes
+    failed_when: false
 
   - name: 读取本地 etcd 备份文件
     find:
@@ -43,13 +45,12 @@
 
   - name: 恢复 etcd 数据
     command: >
-      etcdctl snapshot restore \
-      {{ kubernetes_etc_dir }}/backup-etcd/etcd-snapshot-latest.db \
-      --data-dir={{ etcd_data_dir }} \
+      etcdctl snapshot restore {{ kubernetes_etc_dir }}/backup-etcd/etcd-snapshot-latest.db \
       --name={{ hostvars[inventory_hostname].ansible_hostname | lower }} \
-      --initial-cluster={% for host in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique) %}{{ hostvars[host].ansible_hostname | lower }}=https://{{ hostvars[host]['ansible_' + iface].ipv4.address }}:2380{% if not loop.last %},{% endif %}{% endfor %} \
       --initial-cluster-token=etcd-cluster-token \
-      --initial-advertise-peer-urls=https://{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}:2380
+      --initial-cluster={% for host in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique) %}{{ hostvars[host].ansible_hostname | lower }}=https://{{ hostvars[host]['ansible_' + iface].ipv4.address }}:2380{% if not loop.last %},{% endif %}{% endfor %} \
+      --initial-advertise-peer-urls=https://{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}:2380 \
+      --data-dir={{ etcd_data_dir }}
 
   - name: 启动 etcd
     systemd:

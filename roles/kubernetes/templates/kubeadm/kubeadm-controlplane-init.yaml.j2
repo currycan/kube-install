@@ -41,7 +41,7 @@ apiVersion: kubeadm.k8s.io/v1beta1
 kind: ClusterConfiguration
 kubernetesVersion: v{{ kube_version }}
 clusterName: {{ cluster_name }}
-controlPlaneEndpoint: "{%- if groups['kube_masters'] | length == 1 -%}{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}:6443{%- else -%}{{ lb_apiserver_ip }}:{{ lb_secure_port }}{%- endif %}"
+controlPlaneEndpoint: "{%- if groups['kube_masters'] | length == 1 -%}{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}:6443{%- else -%}{{ lb_apiserver_ip }}:{{ lb_secure_port }}{%- endif %}"
 certificatesDir: {{ k8s_pki_dir }}
 {% if (kube_version is version('1.15.0', '>=')) %}
 dns:

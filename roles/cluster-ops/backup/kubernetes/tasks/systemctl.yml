@@ -28,4 +28,4 @@
     - "/etc/logrotate.d/kube-apiserver"
     - "/etc/logrotate.d/kube-controller-manager"
     - "/etc/logrotate.d/kube-scheduler"
-  when: inventory_hostname in (groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique)
+  when: inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)

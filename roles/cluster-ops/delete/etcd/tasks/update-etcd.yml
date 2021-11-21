@@ -30,7 +30,7 @@
     register: started_etcd
     until: started_etcd.status.ActiveState == "active"
     retries: 3
-    delay: "{{ retry_stagger }}"
+    delay: "2"
 
   - name: 检查服务状态
     uri:

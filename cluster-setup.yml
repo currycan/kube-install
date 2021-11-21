@@ -12,5 +12,5 @@
   - { role: prepare/initialize }
   - { role: container-runtime }
   - { role: certificates }
-  - { role: etcd }
+  - { role: etcd, when: "inventory_hostname in groups['kube_etcds']" }
   - { role: kubernetes }

@@ -67,7 +67,7 @@ kube_proxy_cert_key: "{{ k8s_pki_dir }}/{%- if enable_cfssl_certs | bool -%}kube
 # O: Organization，kube-apiserver 从证书中提取该字段作为请求用户所属的组 (Group)
 # OU: Organization Unit cn，组织单位名称，公司部门
 # ST: State，州，省
-master_certs:
+cluster_certs:
   # root ca
   - name: ca
     cn: kubernetes-ca
@@ -191,3 +191,29 @@ master_certs:
 #     kind: client
 #     csr: "{%- if enable_cfssl_certs | bool -%}kube-proxy.json{% else %}kubelet{%- endif -%}"
 #     dir: "{{ k8s_pki_dir }}"
+
+add_etcd_certs:
+  - name: server
+    cn: kube-etcd
+    parent_ca: etcd-ca
+    # 此处需要特别注意，由于etcd实现方式不同，server的证书也会用于进行客户端认证，因此要选对等模式
+    kind: peer
+    hosts: "{{ etcd_cert_hosts }}"
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-etcd-csr.json{% else %}peer{%- endif -%}"
+    dir: "{{ etcd_pki_dir }}"
+  - name: peer
+    cn: kube-etcd-peer
+    parent_ca: etcd-ca
+    kind: peer
+    hosts: "{{ etcd_cert_hosts }}"
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-etcd-peer-csr.json{% else %}peer{%- endif -%}"
+    dir: "{{ etcd_pki_dir }}"
+
+add_master_certs:
+  - name: apiserver
+    cn: kube-apiserver
+    parent_ca: kubernetes-ca
+    kind: server
+    hosts: "{{ apiserver_hosts }}"
+    csr: "{%- if enable_cfssl_certs | bool -%}kube-apiserver.json{% else %}client{%- endif -%}"
+    dir: "{{ k8s_pki_dir }}"

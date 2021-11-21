@@ -27,7 +27,7 @@
   - name: 设置 bootstrap_token 变量
     set_fact:
       bootstrap_token: "{{ get_bootstrap_token.stdout }}"
-  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
 - block:
   - name: 判断集群依赖 kubeconfig 文件是否存在
@@ -41,4 +41,4 @@
     include_tasks: "_create.yml"
     with_items: "{{ check_kubeconfig_files['results'] }}"
   run_once: true
-  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"

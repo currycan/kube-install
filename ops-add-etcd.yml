@@ -1,34 +1,19 @@
 - hosts:
-  - kube_etcds
+  - add_etcds
   become: true
   gather_facts: true
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
+  - { role: prepare/kernel }
   - { role: prepare/check-environment }
   - { role: prepare/chrony, when: "groups['chrony']|length > 0" }
   - { role: prepare/initialize }
-  - { role: certificates }
 
 - hosts:
-  - add_etcds
+  - kube_etcds
   become: true
-  serial: 1
+  # serial: 2
   gather_facts: true
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-  # 二进制文件加载
   - { role: cluster-ops/add/etcd }
-
-- hosts:
-  - kube_masters
-  become: true
-  gather_facts: true
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  tasks:
-  - name: master 节点重新配置参数
-    when: "groups['add_etcds']|length > 0"
-    systemd:
-      name: kubelet
-      daemon_reload: yes
-      state: restart
-      enabled: yes

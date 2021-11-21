@@ -21,7 +21,6 @@
     - "{{ kubelet_data_dir }}"
     - "{{ kube_proxy_data_dir }}"
     - "{{ kubernetes_log_dir }}/kubelet"
-    # - "{{ kubernetes_log_dir }}/kube-proxy"
 
   - name: 所有 kube_cluster 节点渲染相关配置文件
     template:

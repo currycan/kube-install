@@ -32,7 +32,6 @@
   - "{{ systemd_service_dir }}/kubelet.service.d"
   - "{{ kubelet_pki_dir }}"
   - "{{ kubernetes_log_dir }}/kubelet"
-  - "{{ kubernetes_log_dir }}/kube-proxy"
 
 - name: restore kubernetes
   include_tasks: restore.yml

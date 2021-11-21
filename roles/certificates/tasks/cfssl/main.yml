@@ -9,18 +9,36 @@
     - { src: "{{ cache_dir }}/binary/cfssl/", dest: "/usr/bin/"}
 
 - block:
-  - name: 配置 etcd 和 kubernetes master 证书相关参数
+  - name: 配置 kubernetes cluster 证书相关参数
     set_fact:
-      certs: "{{ master_certs }}"
+      certs: "{{ cluster_certs }}"
 
-  - name: 创建 kubernetes master 节点相关证书
+  - name: 创建 kubernetes cluster 相关证书
     include_tasks: "_create.yml"
+  when:
+    - groups['add_etcds'] | length == 0
+    - groups['add_masters'] | length == 0
   run_once: true
-  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
-# - name: 配置 kubernetes worker 证书相关参数
-#   set_fact:
-#     certs: "{{ worker_certs }}"
+- block:
+  - name: etcd 新增节点配置证书相关参数
+    set_fact:
+      certs: "{{ add_etcd_certs }}"
 
-# - name: 创建 kubernetes worker 节点相关证书
-#   include_tasks: "_create.yml"
+  - name: etcd 新增节点创建相关证书
+    include_tasks: "_create.yml"
+  when: groups['add_etcds'] | length > 0
+  run_once: true
+  delegate_to: "{{ groups['add_etcds'] | difference(groups['delete_etcds']) | unique | first }}"
+
+- block:
+  - name: kubernetes master 新增节点证书配置相关参数
+    set_fact:
+      certs: "{{ add_master_certs }}"
+
+  - name: kubernetes master 新增节点创建相关证书
+    include_tasks: "_create.yml"
+  when: groups['add_masters'] | length > 0
+  run_once: true
+  delegate_to: "{{ groups['add_masters'] | difference(groups['delete_masters']) | unique | first  }}"

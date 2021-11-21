@@ -1,4 +1,4 @@
-- name: 创建{{ etcd_pki_dir }}目录
+- name: 创建 {{ etcd_pki_dir }} 目录
   when: "inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']))"
   file:
     name: "{{ item }}"
@@ -7,8 +7,8 @@
   with_items:
     - "{{ etcd_pki_dir }}"
 
-- name: 创建{{ k8s_pki_dir }}目录
-  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)"
+- name: 创建 {{ k8s_pki_dir }} 目录
+  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)"
   file:
     name: "{{ item }}"
     state: directory
@@ -45,9 +45,12 @@
     with_items:
       - "openssl genrsa -out {{ k8s_pki_dir }}/sa.key {{ cert_key_size }}"
       - "openssl {{ cert_key_algo }} -in {{ k8s_pki_dir }}/sa.key -pubout -out {{ k8s_pki_dir }}/sa.pub"
-  when: enable_openssl_certs | bool or enable_cfssl_certs | bool
+  when:
+    - enable_openssl_certs | bool or enable_cfssl_certs | bool
+    - groups['add_etcds'] | length == 0
+    - groups['add_masters'] | length == 0
   run_once: true
-  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
 - name: 同步证书和 kube-config 文件到各节点
   include_tasks: synchronize/main.yml

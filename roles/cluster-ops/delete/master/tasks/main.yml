@@ -54,9 +54,9 @@
   - "{{ kubernetes_log_dir }}/kube-scheduler"
 
 - name: 取消节点原有 master 角色标签
-  failed_when: false
+  # failed_when: false
   changed_when: true
-  command: >
+  shell: >
     kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/control-plane='' --overwrite;
     kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master='' --overwrite;
     kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/control-plane-;
@@ -65,9 +65,9 @@
   delegate_to: "{{ (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first) }}"
 
 - name: 取消 master 节点 taint，使 master 节点可以调度
-  failed_when: false
+  # failed_when: false
   changed_when: true
-  command: >
+  shell: >
     kubectl taint nodes {{ inventory_hostname }} node-role.kubernetes.io/master='':NoSchedule --overwrite;
     kubectl taint nodes {{ inventory_hostname }} node-role.kubernetes.io/master-;
     kubectl uncordon {{ inventory_hostname }}
@@ -76,7 +76,7 @@
 - name: 添加 worker 角色标签
   failed_when: false
   changed_when: true
-  command: >
+  shell: >
     kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/worker='' --overwrite
   delegate_to: "{{ (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first) }}"
 
@@ -89,11 +89,14 @@
   run_once: true
   delegate_to: "{{ (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first) }}"
 
-- name: 创建 kubernetes 证书存放目录
+- name: 恢复目录
   file:
-    path: {{ k8s_pki_dir }}
+    path: "{{ item }}"
     state: directory
     mode: 0644
+  with_items:
+  - "{{ k8s_pki_dir }}"
+  - "{{ manifest_dir }}"
 
 - name: 恢复 kubernetes ca 证书
   copy:
@@ -112,6 +115,6 @@
     state: restarted
     enabled: yes
   register: started_kubelet
-  until: started_kubelet is succeeded
+  until: started_kubelet.status.ActiveState == "active"
   retries: 3
   delay: "{{ retry_stagger }}"

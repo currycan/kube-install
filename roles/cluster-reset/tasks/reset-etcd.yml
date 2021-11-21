@@ -4,7 +4,7 @@
     state: stopped
     enabled: no
   register: stop_etcd_result
-  failed_when: stop_etcd_result.failed
+  failed_when: false
 
 - name: 删除所有 etcd 文件及目录
   file: path="{{ item }}" state=absent

@@ -20,7 +20,7 @@
     src: "{{ kubernetes_etc_dir }}/admin.conf"
   register: slurp_kubeconfig
   run_once: true
-  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
 - name: 非 root 用户配置 $HOME/.kube/config
   when: item.rc == 0

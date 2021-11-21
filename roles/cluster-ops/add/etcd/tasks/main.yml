@@ -1,36 +1,58 @@
-- name: etcd_initial_cluster_state
-  set_fact:
-    etcd_initial_cluster_state: existing
-
-- name: 新节点部署服务
-  when:
-    - "groups['add_etcds']|length > 0"
-    - inventory_hostname in (groups['add_etcds'] | difference(groups['delete_etcds']) | unique )
-  include_role:
-    name: "{{ inventory_dir }}/roles/etcd"
-
 - block:
   - name: 获取 etcd member 状态
-    command: >-
-      etcdctl --endpoints {{ etcd_servers }} \
-      --cacert {{ etcd_ca }} \
-      --key  {{ etcd_cert_healthcheck_client_key }} \
-      --cert {{ etcd_cert_healthcheck_client }} \
-      member list | grep {{ inventory_hostname }};
+    shell: >-
+      set -o pipefail;
+      etcdctl member list | grep {{ inventory_hostname }}
+    changed_when: true
+    failed_when: false
     environment:
-      ETCDCTL_API: 3
+      - ETCDCTL_CERT: "{{ etcd_cert_healthcheck_client }}"
+      - ETCDCTL_KEY: "{{ etcd_cert_healthcheck_client_key }}"
+      - ETCDCTL_CACERT: "{{ etcd_ca }}"
+      - ETCDCTL_ENDPOINTS: "{{ etcd_servers }}"
+      - ETCDCTL_API: 3
     register: get_etcd_member
 
   - name: 新节点 加入 etcd 集群中
     when: get_etcd_member.stdout | length == 0
     changed_when: true
-    command: >-
-      etcdctl --endpoints {{ etcd_servers }} \
-      --cacert {{ etcd_ca }} \
-      --key  {{ etcd_cert_healthcheck_client_key }} \
-      --cert {{ etcd_cert_healthcheck_client }} \
-      member add {{ hostvars[inventory_hostname].ansible_hostname | lower }} --peer-urls={{ etcd_listen_peer_urls }}
+    shell: >-
+      set -o pipefail;
+      etcdctl member add {{ hostvars[inventory_hostname].ansible_hostname | lower }} --peer-urls={{ etcd_listen_peer_urls }}
     environment:
-      ETCDCTL_API: 3
+      - ETCDCTL_CERT: "{{ etcd_cert_healthcheck_client }}"
+      - ETCDCTL_KEY: "{{ etcd_cert_healthcheck_client_key }}"
+      - ETCDCTL_CACERT: "{{ etcd_ca }}"
+      - ETCDCTL_ENDPOINTS: "{{ etcd_servers }}"
+      - ETCDCTL_API: 3
   delegate_to: "{{ groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first }}"
+
+- block:
+  - name: 同步 {{ etcd_pki_dir }} 文件到新增节点
+    copy:
+      src: "{{ etcd_pki_dir }}/"
+      dest: "{{ etcd_pki_dir }}/"
+      mode: 0644
+
+  - name: 删除 etcd 证书，添加新节点重新生成
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ etcd_cert_server }}"
+      - "{{ etcd_cert_server_key }}"
+      - "{{ etcd_cert_peer }}"
+      - "{{ etcd_cert_peer_key }}"
   when: inventory_hostname in (groups['add_etcds'] | difference(groups['delete_etcds']) | unique )
+
+- name: 重新生成 server 和 peer 证书
+  include_role:
+    name: "{{ inventory_dir }}/roles/certificates"
+
+- name: etcd_initial_cluster_state
+  set_fact:
+    etcd_initial_cluster_state: existing
+
+- name: 重新调整 etcd 集群
+  include_role:
+    name: "{{ inventory_dir }}/roles/etcd"

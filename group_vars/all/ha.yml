@@ -20,6 +20,6 @@ lb_envoy_admin_address_port: 9090
 lb_apiserver_ip: "{{ vip_address }}"
 lb_secure_port: 8443
 lb_healthcheck_port: 8081
-single_api_url: "https://{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}:6443"
+single_api_url: "https://{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}:6443"
 lb_api_url: "https://{{ vip_address }}:{{ lb_secure_port }}"
 api_url: "{%- if groups['kube_masters'] | length == 1 -%}{{ single_api_url }}{%- else -%}{{ lb_api_url }}{%- endif %}"

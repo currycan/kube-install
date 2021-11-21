@@ -1,7 +1,6 @@
 # add_masters
 - hosts:
-  - kube_etcds
-  - kube_cluster
+  - add_masters
   become: true
   gather_facts: true
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -10,14 +9,12 @@
   - { role: prepare/check-environment }
   - { role: prepare/chrony, when: "groups['chrony']|length > 0" }
   - { role: prepare/initialize }
-  - { role: prepare/kube-install }
   - { role: container-runtime }
-  - { role: certificates }
 
 - hosts:
-  - add_masters
+  - kube_masters
   become: true
-  serial: 1
+  # serial: 2
   gather_facts: true
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:

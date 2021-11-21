@@ -21,7 +21,7 @@
     shell: >
       cat "{{ kubernetes_etc_dir }}/encryption_config_secret.yml" | grep encryption_config_secret | cut -d ":" -f 2 | sed 's/^[ \t]*//g'
     register: get_encryption_config_secret
-    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_etcds']) | difference(groups['delete_masters']) | unique | first }}"
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
   - name: 设置 encryption_config_secret 变量
     set_fact:

@@ -11,7 +11,7 @@
     msg: "当前节点: {{ item }}，并未在 etcd 组中，不需要进行移除操作。"
   with_items: "{{ groups['delete_etcds'] }}"
 
-- name: 校验 etcd 节点数量
+- name: 校验现有 etcd 节点数量
   run_once: true
   assert:
     that: groups['kube_etcds']|length > 1
@@ -25,9 +25,16 @@
 
 - name: 获取将要移除的 etcd 节点 member id
   changed_when: true
-  command: >
-    source {{ profile_dir }}/etcd.sh;
-    etcd3 member list | grep {{ inventory_hostname }} | cut -d',' -f1
+  failed_when: false
+  shell: >
+    set -o pipefail;
+    etcdctl member list | grep {{ inventory_hostname }} | cut -d',' -f1
+  environment:
+    - ETCDCTL_CERT: "{{ etcd_cert_healthcheck_client }}"
+    - ETCDCTL_KEY: "{{ etcd_cert_healthcheck_client_key }}"
+    - ETCDCTL_CACERT: "{{ etcd_ca }}"
+    - ETCDCTL_ENDPOINTS: "{{ etcd_servers }}"
+    - ETCDCTL_API: 3
   args:
     executable: /bin/bash
   delegate_to: "{{ (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first) }}"
@@ -36,9 +43,16 @@
 - name: 从 etcd 集群中移除 {{ inventory_hostname }} 节点
   when: etcd_member_id.stdout | length > 0
   changed_when: true
-  command: >
-    source {{ profile_dir }}/etcd.sh;
-    etcd3 member remove {{ etcd_member_id.stdout }}
+  failed_when: false
+  shell: >
+    set -o pipefail;
+    etcdctl member remove {{ etcd_member_id.stdout }}
+  environment:
+    - ETCDCTL_CERT: "{{ etcd_cert_healthcheck_client }}"
+    - ETCDCTL_KEY: "{{ etcd_cert_healthcheck_client_key }}"
+    - ETCDCTL_CACERT: "{{ etcd_ca }}"
+    - ETCDCTL_ENDPOINTS: "{{ etcd_servers }}"
+    - ETCDCTL_API: 3
   args:
     executable: /bin/bash
   delegate_to: "{{ (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first) }}"
@@ -73,7 +87,9 @@
 
 - name: 删除所有 etcd ca 证书
   when: inventory_hostname not in groups['kube_masters']
-  file: path="{{ item }}" state=absent
+  file:
+    path: "{{ item }}"
+    state: absent
   with_items:
   - "{{ etcd_ca }}"
 

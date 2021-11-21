@@ -1,4 +1,4 @@
-# 安装 etcd cluster
+# 生成集群证书及认证文件
 - hosts:
   - kube_etcds
   - kube_cluster
