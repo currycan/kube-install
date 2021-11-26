@@ -1,6 +1,3 @@
-[deploy]
-10.10.10.10 iface=ens192
-
 [chrony]
 10.10.10.1 iface=ens192
 

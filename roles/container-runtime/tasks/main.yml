@@ -26,9 +26,9 @@
   command: "sysctl -p /etc/sysctl.d/99-cri.conf"
 
 - include_tasks: "containerd/main.yml"
-  when: inventory_hostname in ((groups['deploy'] + groups['kube_cluster'])| unique)
+  when: inventory_hostname in groups['kube_cluster'] | unique
 
 - include_tasks: "docker/main.yml"
   when:
     - container_runtime == 'docker'
-    - inventory_hostname in ((groups['deploy'] + groups['kube_cluster'])| unique)
+    - inventory_hostname in groups['kube_cluster'] | unique

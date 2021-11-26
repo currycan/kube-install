@@ -1,6 +1,5 @@
 # 初始化数据磁盘
 - hosts:
-  # - deploy
   - kube_cluster
   become: true
   gather_facts: true

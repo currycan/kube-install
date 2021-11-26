@@ -1,6 +1,3 @@
-[deploy]
-test-env iface=ens33
-
 [chrony]
 test-env iface=ens33
 
