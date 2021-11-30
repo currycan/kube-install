@@ -188,7 +188,7 @@ function download_cfssl_binary (){
     fi
 }
 
-function download_images (
+function download_images (){
     # master nodes
     image_repo="registry.cn-hangzhou.aliyuncs.com/google_containers"
     master_images="kube-apiserver:${KUBERNETES_VERSION} kube-scheduler:${KUBERNETES_VERSION} kube-controller-manager:${KUBERNETES_VERSION}"
@@ -212,7 +212,7 @@ function download_images (
     docker pull coredns/coredns:${COREDNS_VERSION:1}
     docker save -o ${IMAGE_DIR}/worker.tar.gz \
         coredns/coredns:${COREDNS_VERSION:1}
-)
+}
 
 function download () {
     create_dir

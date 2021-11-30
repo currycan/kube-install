@@ -28,7 +28,6 @@ bootstrapTokens:
   - system:bootstrappers:kubeadm:default-node-token
   description: "kubeadm bootstrap token"
   token: {{ bootstrap_token }}
-  {# ttl: "0" #}
   ttl: "24h0m0s"
   usages:
   - signing

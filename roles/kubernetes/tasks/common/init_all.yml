@@ -35,4 +35,4 @@
       - { src: "kubelet/12-cgroup.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/12-cgroup.conf" }
       - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
       - { src: "kubelet/kubelet-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
-      # - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
+      - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
