@@ -4,11 +4,8 @@
   serial: 1
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  tasks:
-  - name: 删除 master 节点
-    when: "groups['delete_masters']|length > 0"
-    include_role:
-      name: cluster-ops/delete/master
+  roles:
+  - { role: cluster-ops/delete/master }
 
 - hosts:
   - kube_masters

@@ -26,8 +26,8 @@
     environment:
       ENABLE_INIT: true
   when:
-    - groups['add_etcds'] | length == 0
-    - groups['add_masters'] | length == 0
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
@@ -42,7 +42,9 @@
       /usr/local/bin/update-kubeadm-cert.sh etcd || exit 0
     environment:
       ENABLE_INIT: true
-  when: groups['add_etcds'] | length > 0
+  when:
+    - add_etcds_task is defined
+    - add_etcds_task | bool
   run_once: true
   delegate_to: "{{ groups['add_etcds'] | difference(groups['delete_etcds']) | unique | first }}"
 
@@ -56,6 +58,8 @@
       /usr/local/bin/update-kubeadm-cert.sh master || exit 0
     environment:
       ENABLE_INIT: true
-  when: groups['add_masters'] | length > 0
+  when:
+    - add_masters_task is defined
+    - add_masters_task | bool
   run_once: true
   delegate_to: "{{ groups['add_masters'] | difference(groups['delete_masters']) | unique | first }}"

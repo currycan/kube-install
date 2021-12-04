@@ -1,15 +1,8 @@
-- name: 校验 master 节点数量
+- name: 校验删除 master 节点数量
   run_once: true
   assert:
-    that: groups['kube_masters']|length > 1
-    msg: "Master 节点数量大于 1 才可进行 master 节点移除操作。"
-
-- name: 校验将被移除的 master 节点是否在原 master 组中
-  run_once: true
-  assert:
-    that: "{{ item in groups['kube_masters'] }}"
-    msg: "当前节点: {{ item }}，并未在 kube_masters 组中，不需要进行移除操作。"
-  with_items: "{{ groups['delete_masters'] }}"
+    that: (groups['delete_masters'] | unique)|length > 0
+    msg: " 未配置删除 master 节点!"
 
 - name: 校验 master 节点数量
   run_once: true
@@ -23,6 +16,12 @@
     that: "{{ item in groups['kube_masters'] }}"
     msg: "当前节点: {{ item }}，并未在 kube_masters 组中，不需要进行移除操作。"
   with_items: "{{ groups['delete_masters'] }}"
+
+- name: 校验现有 master 节点数量
+  run_once: true
+  assert:
+    that: groups['kube_masters']|length > 1
+    msg: "Master 节点数量大于 1 才可进行 master 节点移除操作。"
 
 - name: 校验移除 master 节点后剩余 master 节点数量
   run_once: true
@@ -54,7 +53,7 @@
   - "{{ kubernetes_log_dir }}/kube-scheduler"
 
 - name: 取消节点原有 master 角色标签
-  # failed_when: false
+  failed_when: false
   changed_when: true
   shell: >
     kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/control-plane='' --overwrite;
@@ -65,7 +64,7 @@
   delegate_to: "{{ (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first) }}"
 
 - name: 取消 master 节点 taint，使 master 节点可以调度
-  # failed_when: false
+  failed_when: false
   changed_when: true
   shell: >
     kubectl taint nodes {{ inventory_hostname }} node-role.kubernetes.io/master='':NoSchedule --overwrite;

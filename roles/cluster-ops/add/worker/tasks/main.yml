@@ -1,3 +1,8 @@
+- name: 校验新增 node 节点数量
+  run_once: true
+  assert:
+    that: (groups['add_nodes'] | difference(groups['delete_nodes']) | unique)|length > 0
+    msg: " 未配置新增 node 节点，或者新增节点在 delete_nodes 组内!"
 
 - block:
   - name: 创建目录
@@ -9,7 +14,7 @@
       - "{{ k8s_pki_dir }}"
       - "{{ manifest_dir }}"
 
-  - name: 获取 kubernetes ca 证书
+  - name: 获取 kubernetes ca 证书和 bootstrap-kubelet.conf
     slurp:
       src: "{{ item }}"
     with_items:
@@ -19,7 +24,7 @@
     run_once: true
     delegate_to: "{{ (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first) }}"
 
-  - name: 恢复 kubernetes ca 证书
+  - name: 分发 kubernetes ca 证书和 bootstrap-kubelet.conf 到新增 worker 节点
     copy:
       dest: "{{ item.source }}"
       content: "{{ item.content | b64decode }}"

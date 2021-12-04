@@ -33,35 +33,7 @@
     when:
       - inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)
       - inventory_hostname != (groups['kube_masters'] | difference(groups['delete_masters']) | unique | first)
-  when: groups['add_masters'] | length == 0
 
-- block:
-  - name: 新增 master 节点，获取 kubernetes master 节点更新后的相关证书
-    slurp:
-      src: "{{ item }}"
-    with_items:
-      - "{{ apiserver_cert }}"
-      - "{{ apiserver_cert_key }}"
-    register: slurp_kubernetes_master_add_certs
-    when: groups['add_masters'] | length > 0
-    run_once: true
-    delegate_to: "{{ groups['add_masters'] | difference(groups['delete_masters']) | unique | first }}"
-
-  - name: 新增 master 节点，更新 kubernetes master 相关证书到 master 节点
-    copy:
-      dest: "{{ item.source }}"
-      content: "{{ item.content | b64decode }}"
-      owner: root
-      group: root
-      mode: 0644
-    no_log: true
-    with_items: "{{ slurp_kubernetes_master_add_certs.results }}"
-    when:
-      - inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)
-      - inventory_hostname != (groups['add_masters'] | difference(groups['delete_masters']) | unique | first )
-  when: groups['add_masters'] | length > 0
-
-- block:
   - name: 获取 kubernetes 所有节点 ca 证书
     slurp:
       src: "{{ item }}"
@@ -81,4 +53,33 @@
     no_log: true
     with_items: "{{ slurp_kubernetes_ca_certs.results }}"
     when: inventory_hostname in (groups['kube_nodes'] | difference(groups['delete_nodes']) | unique)
-  when: groups['add_masters'] | length == 0
+  when:
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
+
+- block:
+  - name: 新增 master 节点，获取 kubernetes master 节点更新后的相关证书
+    slurp:
+      src: "{{ item }}"
+    with_items:
+      - "{{ apiserver_cert }}"
+      - "{{ apiserver_cert_key }}"
+    register: slurp_kubernetes_master_add_certs
+    run_once: true
+    delegate_to: "{{ groups['add_masters'] | difference(groups['delete_masters']) | unique | first }}"
+
+  - name: 新增 master 节点，更新 kubernetes master 相关证书到 master 节点
+    copy:
+      dest: "{{ item.source }}"
+      content: "{{ item.content | b64decode }}"
+      owner: root
+      group: root
+      mode: 0644
+    no_log: true
+    with_items: "{{ slurp_kubernetes_master_add_certs.results }}"
+    when:
+      - inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)
+      - inventory_hostname != (groups['add_masters'] | difference(groups['delete_masters']) | unique | first )
+  when:
+    - add_masters_task is defined
+    - add_masters_task | bool

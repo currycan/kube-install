@@ -7,8 +7,8 @@
   - name: 创建 kubernetes cluster 相关证书
     include_tasks: "_create.yml"
   when:
-    - groups['add_etcds'] | length == 0
-    - groups['add_masters'] | length == 0
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
@@ -19,7 +19,9 @@
 
   - name: etcd 新增节点创建相关证书
     include_tasks: "_create.yml"
-  when: groups['add_etcds'] | length > 0
+  when:
+    - add_etcds_task is defined
+    - add_etcds_task | bool
   run_once: true
   delegate_to: "{{ groups['add_etcds'] | difference(groups['delete_etcds']) | unique | first }}"
 
@@ -30,6 +32,8 @@
 
   - name: kubernetes master 新增节点创建相关证书
     include_tasks: "_create.yml"
-  when: groups['add_masters'] | length > 0
+  when:
+    - add_masters_task is defined
+    - add_masters_task | bool
   run_once: true
   delegate_to: "{{ groups['add_masters'] | difference(groups['delete_masters']) | unique | first }}"

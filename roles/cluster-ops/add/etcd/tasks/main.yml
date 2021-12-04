@@ -1,31 +1,8 @@
-- block:
-  - name: 获取 etcd member 状态
-    shell: >-
-      set -o pipefail;
-      etcdctl member list | grep {{ inventory_hostname }}
-    changed_when: true
-    failed_when: false
-    environment:
-      - ETCDCTL_CERT: "{{ etcd_cert_healthcheck_client }}"
-      - ETCDCTL_KEY: "{{ etcd_cert_healthcheck_client_key }}"
-      - ETCDCTL_CACERT: "{{ etcd_ca }}"
-      - ETCDCTL_ENDPOINTS: "{{ etcd_servers }}"
-      - ETCDCTL_API: 3
-    register: get_etcd_member
-
-  - name: 新节点 加入 etcd 集群中
-    when: get_etcd_member.stdout | length == 0
-    changed_when: true
-    shell: >-
-      set -o pipefail;
-      etcdctl member add {{ hostvars[inventory_hostname].ansible_hostname | lower }} --peer-urls={{ etcd_listen_peer_urls }}
-    environment:
-      - ETCDCTL_CERT: "{{ etcd_cert_healthcheck_client }}"
-      - ETCDCTL_KEY: "{{ etcd_cert_healthcheck_client_key }}"
-      - ETCDCTL_CACERT: "{{ etcd_ca }}"
-      - ETCDCTL_ENDPOINTS: "{{ etcd_servers }}"
-      - ETCDCTL_API: 3
-  delegate_to: "{{ groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first }}"
+- name: 校验新增 etcd 节点数量
+  run_once: true
+  assert:
+    that: (groups['add_etcds'] | difference(groups['delete_etcds']) | unique)|length > 0
+    msg: " 未配置新增 etcd 节点，或者新增节点在 delete_etcds 组内!"
 
 - block:
   - name: 同步 {{ etcd_pki_dir }} 文件到新增节点
@@ -48,6 +25,20 @@
 - name: 重新生成 server 和 peer 证书
   include_role:
     name: "{{ inventory_dir }}/roles/certificates"
+
+- name: 新节点加入 etcd 集群中
+  when: inventory_hostname in (groups['add_etcds'] | difference(groups['delete_etcds']) | unique )
+  shell: >-
+    set -o pipefail;
+    etcdctl member list | grep {{ inventory_hostname }} || \
+    etcdctl member add {{ hostvars[inventory_hostname].ansible_hostname | lower }} --peer-urls={{ etcd_listen_peer_urls }}
+  environment:
+    - ETCDCTL_CERT: "{{ etcd_cert_healthcheck_client }}"
+    - ETCDCTL_KEY: "{{ etcd_cert_healthcheck_client_key }}"
+    - ETCDCTL_CACERT: "{{ etcd_ca }}"
+    - ETCDCTL_ENDPOINTS: "{{ etcd_servers }}"
+    - ETCDCTL_API: 3
+  delegate_to: "{{ groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first }}"
 
 - name: etcd_initial_cluster_state
   set_fact:

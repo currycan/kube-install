@@ -17,5 +17,7 @@
   # serial: 2
   gather_facts: true
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  vars:
+    add_masters_task: true
   roles:
   - { role: cluster-ops/add/master }

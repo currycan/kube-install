@@ -1,3 +1,9 @@
+- name: 校验删除 node 节点数量
+  run_once: true
+  assert:
+    that: (groups['delete_nodes'] | unique)|length > 0
+    msg: " 未配置删除 node 节点!"
+
 - name: 获取集群 daemonsets pod 数量
   changed_when: true
   shell: >

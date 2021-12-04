@@ -34,7 +34,9 @@
     when:
       - inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)
       - inventory_hostname != (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first)
-  when: groups['add_etcds'] | length == 0
+  when:
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
 
 - block:
   - name: 新增 etcd 节点，获取更新后的相关证书
@@ -61,4 +63,6 @@
     when:
       - inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)
       - inventory_hostname != groups['add_etcds'][0]
-  when: groups['add_etcds'] | length > 0
+  when:
+    - add_etcds_task is defined
+    - add_etcds_task | bool

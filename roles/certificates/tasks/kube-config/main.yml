@@ -16,6 +16,9 @@
     - { src: "{{ cache_dir }}/binary/kubernetes/kubectl", dest: "/usr/bin/"}
 
 - name: 生成 bootstrap token
+  when:
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
   include_tasks: common/gen_bootstrap_token.yml
 
 - block:

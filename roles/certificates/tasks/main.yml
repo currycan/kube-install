@@ -1,5 +1,8 @@
 - name: 创建 {{ etcd_pki_dir }} 目录
-  when: "inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']))"
+  when:
+    - "inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']))"
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
   file:
     name: "{{ item }}"
     state: directory
@@ -8,7 +11,10 @@
     - "{{ etcd_pki_dir }}"
 
 - name: 创建 {{ k8s_pki_dir }} 目录
-  when: "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)"
+  when:
+    - "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)"
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
   file:
     name: "{{ item }}"
     state: directory
@@ -16,10 +22,18 @@
   with_items:
     - "{{ k8s_pki_dir }}"
 
-- name: kubeadm 创建集群，禁用 cfssl 方式生成证书
+- name: 确认证书创建方式
+  run_once: true
+  assert:
+    that: (enable_kubeadm_certs | bool) or (enable_openssl_certs | bool) or (enable_cfssl_certs | bool)
+    msg: "未指定证书创建方式，请指定，如：enable_kubeadm_certs=true。"
+
+- name: 校验证书创建方式和集群创建方式是否匹配
   when: startup == 'kubeadm'
-  set_fact:
-    enable_cfssl_certs: false
+  run_once: true
+  assert:
+    that: not enable_cfssl_certs | bool
+    msg: "kubeadm 创建集群，不支持 cfssl 证书， 请修改 enable_cfssl_certs=false ！"
 
 - name: kubeadm 方式安装生成证书
   when: enable_kubeadm_certs | bool
@@ -47,8 +61,8 @@
       - "openssl {{ cert_key_algo }} -in {{ k8s_pki_dir }}/sa.key -pubout -out {{ k8s_pki_dir }}/sa.pub"
   when:
     - enable_openssl_certs | bool or enable_cfssl_certs | bool
-    - groups['add_etcds'] | length == 0
-    - groups['add_masters'] | length == 0
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 

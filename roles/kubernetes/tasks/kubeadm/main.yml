@@ -15,7 +15,7 @@
 
 - name: 和并 kubelet-config.yml 和 kube-proxy-config.yaml 至 kubeadm-config.yaml
   changed_when: true
-  command: >
+  shell: >
     cat {{ kubelet_data_dir }}/config.yaml >> {{ kubernetes_etc_dir }}/kubeadm-config.yaml;
     cat {{ kube_proxy_data_dir }}/config.yaml >> {{ kubernetes_etc_dir }}/kubeadm-config.yaml;
 

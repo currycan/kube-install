@@ -1,22 +1,59 @@
+- name: 校验新增 master 节点数量
+  run_once: true
+  assert:
+    that: (groups['add_masters'] | difference(groups['delete_masters']) | unique)|length > 0
+    msg: " 未配置新增 master 节点，或者新增节点在 delete_masters 组内!"
+
 - block:
-  - name: 同步 {{ k8s_pki_dir }} 文件到新增节点
+  - name: 同步 {{ kubernetes_etc_dir }} 文件到新增节点
     copy:
-      src: "{{ k8s_pki_dir }}/"
-      dest: "{{ k8s_pki_dir }}/"
+      src: "{{ kubernetes_etc_dir }}/"
+      dest: "{{ kubernetes_etc_dir }}/"
       mode: 0644
 
-  - name: 删除 master apiserver 证书，添加新节点重新生成
+  - name: 删除不需要文件，添加新节点重新生成
     file:
       path: "{{ item }}"
       state: absent
     with_items:
       - "{{ apiserver_cert }}"
       - "{{ apiserver_cert_key }}"
+      - "{{ manifest_dir }}"
+      - "{{ kubernetes_etc_dir }}/kubeadm_init.stdout"
+      - "{{ kubernetes_etc_dir }}/kubelet.conf"
   when: inventory_hostname in (groups['add_masters'] | difference(groups['delete_masters']) | unique )
 
 - name: 重新生成 master apiserver 证书
   include_role:
     name: "{{ inventory_dir }}/roles/certificates"
+
+- block:
+  - name: 获取 bootstrap_token
+    shell: >
+      cat "{{ k8s_pki_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1
+    register: get_bootstrap_token
+
+  - name: 设置 bootstrap_token 变量
+    set_fact:
+      bootstrap_token: "{{ get_bootstrap_token.stdout }}"
+
+  - block:
+    - name: 获取 bootstrap token
+      changed_when: true
+      command: >-
+        kubeadm token list
+      register: list_kubeadm_token
+
+    - name: 创建 kubeadm join token
+      when: bootstrap_token not in list_kubeadm_token.stdout
+      changed_when: true
+      command: >-
+        kubeadm token create {{ bootstrap_token }}
+    when:
+      - add_masters_task is defined
+      - add_masters_task | bool
+  run_once: true
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
 - name: 重新调整 kubernetes 集群
   include_role:

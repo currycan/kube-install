@@ -9,7 +9,6 @@
     - kube-scheduler.service
     - kubelet.service
     - ipvsadm.service
-    - kube-proxy.service
     - containerd.service
     - docker.service
     - docker.socket
@@ -32,6 +31,9 @@
     - "{{ kubernetes_etc_dir }}"
     - "{{ cni_etc_dir }}"
     - "{{ kubernetes_log_dir }}"
+    - "{{ systemd_service_dir }}/kube-apiserver.service"
+    - "{{ systemd_service_dir }}/kube-controller-manager.service"
+    - "{{ systemd_service_dir }}/kube-scheduler.service"
     - "{{ systemd_service_dir }}/kubelet.service.d/"
     - "{{ systemd_service_dir }}/kubelet.service"
     - "{{ docker_etc_dir }}"

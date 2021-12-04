@@ -4,6 +4,8 @@
   serial: 2
   gather_facts: true
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  vars:
+    add_nodes_task: true
   roles:
   - { role: prepare/kernel }
   - { role: prepare/check-environment }

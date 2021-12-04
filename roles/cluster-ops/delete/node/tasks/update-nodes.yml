@@ -17,7 +17,7 @@
 
   - name: 创建 etcd 证书存放目录
     file:
-      path: {{ etcd_pki_dir }}
+      path: "{{ etcd_pki_dir }}"
       state: directory
       mode: 0644
 
@@ -30,4 +30,15 @@
       mode: 0644
     no_log: true
     with_items: "{{ slurp_etcd_certs.results }}"
+
+  - name: 重启 etcd 服务
+    systemd:
+      name: etcd
+      daemon_reload: yes
+      state: restarted
+      enabled: yes
+    register: started_etcd
+    until: started_etcd.status.ActiveState == "active"
+    retries: 3
+    delay: "2"
   when: inventory_hostname in groups['kube_etcds']

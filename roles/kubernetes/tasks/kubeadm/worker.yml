@@ -19,11 +19,7 @@
         systemctl stop kubelet.service;
         rm -f {{ kubelet_data_dir }}/cpu_manager_state;
         rm -f {{ kubelet_data_dir }}/memory_manager_state;
-        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml \
-          --ignore-preflight-errors=FileAvailable--etc-kubernetes-pki-ca.crt \
-          --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests \
-          --ignore-preflight-errors=FileAvailable--etc-kubernetes-kubelet.conf \
-          --ignore-preflight-errors=FileAvailable--etc-kubernetes-bootstrap-kubelet.conf
+        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
       register: worker_join_rslt
       ignore_errors: true
 
