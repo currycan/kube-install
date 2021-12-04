@@ -34,3 +34,31 @@
     no_log: true
     with_items: "{{ slurp_kubernetes_ca_cert.results }}"
   when: startup != 'kubeadm'
+
+- block:
+  - name: 获取 bootstrap_token
+    shell: >
+      cat "{{ k8s_pki_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1
+    register: get_bootstrap_token
+
+  - name: 设置 bootstrap_token 变量
+    set_fact:
+      bootstrap_token: "{{ get_bootstrap_token.stdout }}"
+
+  - block:
+    - name: 获取 bootstrap token
+      changed_when: true
+      command: >-
+        kubeadm token list
+      register: list_kubeadm_token
+
+    - name: 创建 kubeadm join token
+      when: bootstrap_token not in list_kubeadm_token.stdout
+      changed_when: true
+      command: >-
+        kubeadm token create {{ bootstrap_token }}
+    when:
+      - add_nodes_task is defined
+      - add_nodes_task | bool
+  run_once: true
+  delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"

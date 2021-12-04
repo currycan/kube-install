@@ -135,10 +135,10 @@ version = 2
       [plugins."io.containerd.grpc.v1.cri".registry.headers]
 
       [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-{% for registry, addr in containerd_registries.items() %}
+{# {% for registry, addr in containerd_registries.items() %}
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry }}"]
           endpoint = ["{{ ([ addr ] | flatten ) | join('","') }}"]
-{% endfor %}
+{% endfor %} #}
 
     [plugins."io.containerd.grpc.v1.cri".x509_key_pair_streaming]
       tls_cert_file = ""

@@ -68,14 +68,14 @@ IP.{{4 + (groups['masters']|length + groups['add_masters']|length + kube_master_
 
 [ alt_kubelet ]
 DNS.1 = localhost
-{% set dns_idx = 1 | int %}
+{# {% set dns_idx = 1 | int %}
 {% for host in (groups['kube_masters'] + groups['kube_nodes'] | default([])) | unique %}
 DNS.{{ dns_idx + loop.index }} = {{ hostvars[host]['ansible_hostname'] }}
-{% endfor %}
+{% endfor %} #}
 IP.1 = 127.0.0.1
 IP.2 = 0:0:0:0:0:0:0:1
-{% set ip_idx = 2 | int %}
+{# {% set ip_idx = 2 | int %}
 {% for host in (groups['kube_masters'] + groups['kube_nodes'] | default([])) | unique %}
 IP.{{ ip_idx + loop.index }} = {{ hostvars[host]['ansible_' + iface].ipv4.address }}
 
-{% endfor %}
+{% endfor %} #}
