@@ -115,16 +115,16 @@
       - kubeadm
 
   # Error from server: Get "https://10.0.1.4:10250/containerLogs/kube-system/kube-apiserver-10.0.1.4/kube-apiserver?follow=true": remote error: tls: internal error
-  # - name: 手动 approve csr
-  #   shell: >
-  #     [ `kubectl get csr | grep 'Pending' | wc -l` -ne 0 ] && \
-  #     kubectl get csr | grep 'Pending' | awk '{print $1}'| xargs kubectl certificate approve || exit 0
-  #   environment:
-  #       KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
-  #   args:
-  #     executable: /bin/bash
-  #   run_once: "{{ enable_run_once | default(true) }}"
-  #   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
+  - name: 手动 approve csr
+    shell: >
+      [ `kubectl get csr | grep 'Pending' | wc -l` -ne 0 ] && \
+      kubectl get csr | grep 'Pending' | awk '{print $1}'| xargs kubectl certificate approve || exit 0
+    environment:
+        KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+    args:
+      executable: /bin/bash
+    run_once: "{{ enable_run_once | default(true) }}"
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
   - name: 获取 kubeconfig admin 文件
     when: inventory_hostname in groups['kube_masters']
