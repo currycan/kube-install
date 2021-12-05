@@ -11,6 +11,10 @@
   - { role: cluster-reset, reset_kernel_module: false }
   tasks:
   - name: 节点运行 etcd 服务，恢复 etcd 服务相关证书
-    include_role:
-      name: cluster-ops/delete/node
-      tasks_from: "{{ inventory_dir }}/roles/cluster-ops/delete/node/tasks/update-nodes.yml"
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update-nodes.yml"
+
+  - name: 更新 hosts
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_host.yml"
+
+  - name: 更新 endpoit
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_endpoint.yml"

@@ -14,9 +14,10 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   tasks:
   - name: 其他 master 节点重新配置参数
-    include_role:
-      name: cluster-ops/delete/master
-      tasks_from: "{{ inventory_dir }}/roles/cluster-ops/delete/master/tasks/update-masters.yml"
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update-masters.yml"
+
+  - name: 更新 endpoit
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_endpoint.yml"
 
 # 彻底删除该节点，需要同时把节点添加至 delete_nodes 组
 - hosts:
@@ -30,6 +31,10 @@
   - { role: cluster-reset, reset_kernel_module: false, when: "inventory_hostname in groups['delete_masters']" }
   tasks:
   - name: 节点运行 etcd 服务，恢复 etcd 服务相关证书
-    include_role:
-      name: cluster-ops/delete/node
-      tasks_from: "{{ inventory_dir }}/roles/cluster-ops/delete/node/tasks/update-nodes.yml"
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update-nodes.yml"
+
+  - name: 更新 hosts
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_host.yml"
+
+  - name: 更新 endpoit
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_endpoint.yml"

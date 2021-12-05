@@ -4,6 +4,8 @@
   become: true
   gather_facts: true
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  vars:
+    add_masters_task: true
   roles:
   - { role: prepare/kernel }
   - { role: prepare/check-environment }
@@ -21,3 +23,15 @@
     add_masters_task: true
   roles:
   - { role: cluster-ops/add/master }
+
+- hosts:
+  - kube_cluster
+  become: true
+  gather_facts: true
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  tasks:
+  - name: 更新 hosts
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_host.yml"
+
+  - name: 更新 endpoit
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_endpoint.yml"

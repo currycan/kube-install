@@ -1,0 +1,12 @@
+- name: 添加集群节点 hostname 信息到 hosts 文件中
+  blockinfile:
+    path: /etc/hosts
+    block: |-
+      {% for item in (groups['kube_cluster']|unique) -%}
+      {{ hostvars[item]['inventory_hostname'] }} {{ hostvars[item]['ansible_hostname'] | lower }}
+      {% endfor %}
+    mode: 0644
+    state: present
+    create: yes
+    backup: yes
+    marker: "# Ansible inventory hosts {mark}"

@@ -128,6 +128,10 @@
   command: "sysctl -w sunrpc.tcp_slot_table_entries=128"
 
 - name: 添加集群节点 hostname 信息到 hosts 文件中
+  when:
+    - add_etcds_task is undefined
+    - add_masters_task is undefined
+    - add_nodes_task is undefined
   blockinfile:
     path: /etc/hosts
     block: |-

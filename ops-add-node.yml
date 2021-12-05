@@ -14,3 +14,15 @@
   - { role: container-runtime }
   - { role: cluster-ops/add/worker }
   - { role: kubernetes }
+
+- hosts:
+  - kube_cluster
+  become: true
+  gather_facts: true
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  tasks:
+  - name: 更新 hosts
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_host.yml"
+
+  - name: 更新 endpoit
+    include_tasks: "{{ inventory_dir }}/roles/cluster-ops/update_endpoint.yml"

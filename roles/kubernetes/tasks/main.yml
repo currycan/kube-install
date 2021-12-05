@@ -176,13 +176,19 @@
 
   - block:
     - name: 创建 endpoint 配置清单目录
+      when: inventory_hostname in groups['kube_masters']
       file:
         name: "{{ item }}"
         state: directory
+        mode: 0664
       with_items: "{{ kubernetes_etc_dir }}/endpoint"
 
     - name: 配置核心组件的 endpoint 清单文件，以便用于prometheus监控
-      template: src="endpoint/{{ item }}.j2" dest="{{ kubernetes_etc_dir }}/endpoint/{{ item }}"
+      when: inventory_hostname in groups['kube_masters']
+      template:
+        src: "endpoint/{{ item }}.j2"
+        dest: "{{ kubernetes_etc_dir }}/endpoint/{{ item }}"
+        mode: 0664
       with_items:
         - control-plane-ep.yml
         - data-plane-ep.yml
@@ -196,8 +202,11 @@
       until: apply_endpoint.rc == 0
       retries: 3
       delay: "{{ retry_stagger }}"
-    run_once: "{{ enable_run_once | default(true) }}"
-    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
+      run_once: "{{ enable_run_once | default(true) }}"
+      delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
+    when:
+      - add_masters_task is undefined
+      - add_nodes_task is undefined
 
   - name: 普通用户配置集群访问权限
     include_tasks: common/normal-user-admission.yml
