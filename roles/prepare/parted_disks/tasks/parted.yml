@@ -35,6 +35,7 @@
     - "{{ disk_dev.mount_dir }}"
     - "{{ disk_dev.sub_dir }}"
 
+# mkfs.xfs /dev/sdb -f
 - name: 挂载分区
   mount:
     path: "{{ disk_dev.mount_dir }}"

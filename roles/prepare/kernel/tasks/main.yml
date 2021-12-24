@@ -38,7 +38,8 @@
 
 - name: 开启 User namespaces
   changed_when: true
-  command: grubby --args="user_namespace.enable=1" --update-kernel="$(grubby --default-kernel)"
+  shell: >-
+    grubby --args="user_namespace.enable=1" --update-kernel="$(grubby --default-kernel)"
 
 - name: 卸载 3.10 版本 kernel
   yum:

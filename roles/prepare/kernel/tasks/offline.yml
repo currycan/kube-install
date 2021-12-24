@@ -5,8 +5,9 @@
     run_once: true
 
   - name: 离线安装 kernel
+    # yum install -y *.rpm
     command: >-
-      yum install -y *.rpm
+      rpm -Uvh --nodeps --force *.rpm
     args:
       warn: false
       chdir: "{{ cache_dir }}/kernel"
