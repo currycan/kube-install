@@ -8,7 +8,7 @@
     - kubectl
     - kubeadm
 
-- name: 当前会话加载 kubectl kubeadm 命令，并自动补全
+- name: kubectl kubeadm 自动补全写入 /etc/bash_completion.d/
   changed_when: true
   shell: >
     {{ item }} completion bash > /etc/bash_completion.d/{{ item }};

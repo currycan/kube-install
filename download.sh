@@ -182,6 +182,18 @@ function download_kubernetes_binary (){
     fi
 }
 
+function download_helm_binary (){
+    echo ">>>>>>: 开始下载 helm 二进制包"
+    if [ ! -d ${BINARY_DIR}/helm ];then
+        cd /tmp
+        curl -fSLO "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz"
+        mkdir -p ${BINARY_DIR}/helm
+        tar zxf helm-v${HELM_VERSION}-linux-amd64.tar.gz -C ${BINARY_DIR}/helm --strip-components=1
+        rm -f ${BINARY_DIR}/helm/LICENSE
+        rm -f ${BINARY_DIR}/helm/README.md
+    fi
+}
+
 function download_cfssl_binary (){
     echo ">>>>>>: 开始下载 cfssl 二进制包"
     if [ ! -d ${BINARY_DIR}/cfssl ];then
@@ -229,7 +241,7 @@ function download_images (){
 
 function version(){
     if [ -f ${BASE_DIR}/version.yml ];then
-        components="kernel_offlie_version etcd_version kube_version containerd_version docker_version coredns_version"
+        components="kernel_offlie_version etcd_version kube_version containerd_version docker_version helm_version coredns_version"
         for cm in ${components};
         do
             export ${cm^^}=`grep $cm ${BASE_DIR}/version.yml | cut -d' ' -f2`
@@ -247,6 +259,8 @@ function version(){
         CRICTL_VERSION=`curl -sSf https://github.com/kubernetes-sigs/cri-tools/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
         # docker
         DOCKER_VERSION=`curl -sSf https://download.docker.com/linux/static/stable/x86_64/ | grep -e docker- | tail -n 1 | cut -d">" -f1 | grep -oP "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
+        # helm
+        HELM_VERSION=`curl -sSf https://github.com/helm/helm/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
         # coreDns
         COREDNS_VERSION=`curl -sSf https://github.com/coredns/coredns/tags | grep "releases/tag/" | head -n 1 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
     fi
@@ -255,6 +269,7 @@ function version(){
     echo kubernetes 版本: $KUBE_VERSION
     echo containerd 版本: $CONTAINERD_VERSION
     echo docker 版本: $DOCKER_VERSION
+    echo helm 版本: $HELM_VERSION
     echo coreDns 版本: $COREDNS_VERSION
 }
 
@@ -264,6 +279,7 @@ function set_version(){
     echo kube_version: ${KUBE_VERSION} >> ${BASE_DIR}/version.yml
     echo containerd_version: ${CONTAINERD_VERSION} >> ${BASE_DIR}/version.yml
     echo docker_version: ${DOCKER_VERSION} >> ${BASE_DIR}/version.yml
+    echo helm_version: ${HELM_VERSION} >> ${BASE_DIR}/version.yml
     echo coredns_version: ${COREDNS_VERSION} >> ${BASE_DIR}/version.yml
 }
 
@@ -278,6 +294,7 @@ function download () {
     download_kubernetes_rpm
     download_containerd_binary
     download_docker_binary
+    download_helm_binary
     download_etcd_binary
     download_kubernetes_binary
     download_cfssl_binary
