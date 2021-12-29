@@ -227,7 +227,6 @@ function download_images (){
         registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler:v${KUBE_VERSION} \
         registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager:v${KUBE_VERSION}
     # all nodes
-    PAUSE_VERSION=`curl -sSf https://github.com/kubernetes/kubernetes/blob/master/build/pause/CHANGELOG.md | grep "</h1>" | head -n 2 | grep [0-9]\d*.[0-9]\d* -oP | tail -n 1`
     docker pull ${image_repo}/kube-proxy:v${KUBE_VERSION}
     docker pull ${image_repo}/pause:${PAUSE_VERSION}
     docker save -o ${IMAGE_DIR}/all.tar.gz \
@@ -241,7 +240,7 @@ function download_images (){
 
 function version(){
     if [ -f ${BASE_DIR}/version.yml ];then
-        components="kernel_offlie_version etcd_version kube_version containerd_version docker_version helm_version coredns_version"
+        components="kernel_offlie_version etcd_version kube_version containerd_version docker_version helm_version pause_version coredns_version"
         for cm in ${components};
         do
             export ${cm^^}=`grep $cm ${BASE_DIR}/version.yml | cut -d' ' -f2`
@@ -261,6 +260,8 @@ function version(){
         DOCKER_VERSION=`curl -sSf https://download.docker.com/linux/static/stable/x86_64/ | grep -e docker- | tail -n 1 | cut -d">" -f1 | grep -oP "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
         # helm
         HELM_VERSION=`curl -sSf https://github.com/helm/helm/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
+        # infrastructure pause image
+        PAUSE_VERSION=`curl -sSf https://github.com/kubernetes/kubernetes/blob/master/build/pause/CHANGELOG.md | grep "</h1>" | head -n 2 | grep [0-9]\d*.[0-9]\d* -oP | tail -n 1`
         # coreDns
         COREDNS_VERSION=`curl -sSf https://github.com/coredns/coredns/tags | grep "releases/tag/" | head -n 1 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
     fi
@@ -270,6 +271,7 @@ function version(){
     echo containerd 版本: $CONTAINERD_VERSION
     echo docker 版本: $DOCKER_VERSION
     echo helm 版本: $HELM_VERSION
+    echo pause_version 版本: $PAUSE_VERSION
     echo coreDns 版本: $COREDNS_VERSION
 }
 
@@ -280,6 +282,7 @@ function set_version(){
     echo containerd_version: ${CONTAINERD_VERSION} >> ${BASE_DIR}/version.yml
     echo docker_version: ${DOCKER_VERSION} >> ${BASE_DIR}/version.yml
     echo helm_version: ${HELM_VERSION} >> ${BASE_DIR}/version.yml
+    echo pause_version: ${PAUSE_VERSION} >> ${BASE_DIR}/version.yml
     echo coredns_version: ${COREDNS_VERSION} >> ${BASE_DIR}/version.yml
 }
 

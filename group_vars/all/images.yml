@@ -1,6 +1,6 @@
 images:
   infra:
-    name: "{{ kube_image_repository }}/pause:3.5"
+    name: "{{ kube_image_repository }}/pause:{{ pause_version }}"
     type: all
     enable: "true"
 
