@@ -20,7 +20,7 @@ feature_gates:
   TTLAfterFinished: true
   RotateKubeletServerCertificate: true
   # # 1.20 中新增特性，默认关闭, 1.21 版本中是默认启用
-  GracefulNodeShutdown: true
+  # GracefulNodeShutdown: true
 
 # kube-apiserver variables
 # https://github.com/kelseyhightower/kubernetes-the-hard-way/issues/626

@@ -5,6 +5,12 @@
 #     -v /var/run/docker.sock:/var/run/docker.sock \
 #     -v /Volumes/others/Github/ansible-kubeadm/download.sh:/download.sh \
 #     centos:7 bash
+
+# docker run --name download -it \
+#     -v $PWD/k8s_cache/:/k8s_cache \
+#     -v /var/run/docker.sock:/var/run/docker.sock \
+#     -v /etc/ansible/download.sh:/download.sh \
+#     centos:7 bash
 # docker start -i download
 
 set -eu

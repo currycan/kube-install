@@ -14,6 +14,7 @@
       - { src: "master/kube-controller-manager.service", dest: "{{ systemd_service_dir }}/kube-controller-manager.service" }
       - { src: "master/kube-scheduler.service", dest: "{{ systemd_service_dir }}/kube-scheduler.service" }
       - { src: "bootstrap-secret/kubelet-bootstrap-secret.yaml", dest: "{{ rbac_dir }}/kubelet-bootstrap-secret.yaml" }
+      - { src: "kubelet/kubeadm-flags.env", dest: "/var/lib/kubelet/kubeadm-flags.env" }
 
   - name: 二进制安装，启动 kubernetes master节点 三大核心组件，并设置开机启动
     systemd:

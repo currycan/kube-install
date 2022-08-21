@@ -14,7 +14,9 @@ discovery:
   tlsBootstrapToken: {{ bootstrap_token }}
 nodeRegistration:
   kubeletExtraArgs:
+{% if (kube_version is version('1.24.0', '<')) %}
     network-plugin: cni
+{% endif %}
     root-dir: {{ kubelet_data_dir }}
     hostname-override: {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
     pod-infra-container-image: "{{ images.infra.name }}"

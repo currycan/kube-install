@@ -27,8 +27,8 @@
         rm -f {{ manifest_dir }}/kube-*;
         kubeadm init --config={{ kubernetes_etc_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
       register: init_rslt
-      until: init_rslt.rc == 0
-      retries: 3
+      # until: init_rslt.rc == 0
+      # retries: 3
       delay: "{{ retry_stagger | random + 2 }}"
       ignore_errors: true
 

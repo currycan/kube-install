@@ -159,7 +159,7 @@
     state: present
     create: yes
     backup: yes
-    marker: "# Ansible inventory hosts {mark}"
+    marker: "# Ansible kube-apiserver domain {mark}"
 
 - name: 确认 hosts 文件中 localhost ipv4 配置正确
   lineinfile:
