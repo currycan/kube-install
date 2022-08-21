@@ -1,2 +1,2 @@
 [Service]
-Environment="CONTAINER_RUNTIME_ARGS={% if container_runtime == 'containerd' %}--container-runtime=remote{% endif %} --cgroup-driver={{ cgroup_driver }} --runtime-request-timeout=15m --container-runtime-endpoint=unix://{{ cri_socket }} --image-service-endpoint=unix://{{ cri_socket }}"
+Environment="CONTAINER_RUNTIME_ARGS={% if container_runtime == 'docker' %}--image-pull-progress-deadline=30m0s{% endif %} {% if container_runtime == 'containerd' %}--container-runtime=remote{% endif %} --cgroup-driver={{ cgroup_driver }} --runtime-request-timeout=15m --container-runtime-endpoint=unix://{{ cri_socket }} --image-service-endpoint=unix://{{ cri_socket }}"

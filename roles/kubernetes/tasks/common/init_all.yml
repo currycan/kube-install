@@ -36,3 +36,21 @@
       - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
       - { src: "kubelet/kubelet-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
       - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
+
+  ## 1.15.12 匿名用户报错：
+  # https://happywzy.top/k8s-master-jie-dian-notready/
+  # kubectl create clusterrolebinding test:anonymous --clusterrole=cluster-admin --user=system:anonymous
+  ## 安装 flannel 失败：
+  # rm -f /etc/cni/net.d/99-containerd-net.conflist
+  # systemctl stop kubelet && ip link del cni0 && systemctl restart kubelet
+  - name: 所有 kube_cluster 节点渲染相关配置文件
+    when: kube_version is version('1.17.0', '<=')
+    template:
+      src: "{{ item.src }}.j2"
+      dest: "{{ item.dest }}"
+      owner: "root"
+      group: "root"
+      mode: "0644"
+    with_items:
+      # 不需要创建,static pod 会初始化失败
+      - { src: "cni-plugin/10-containerd-net.conflist", dest: "{{ cni_etc_dir }}/99-containerd-net.conflist" }

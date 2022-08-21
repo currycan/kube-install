@@ -111,7 +111,7 @@ ansible all -m shell -a "tar zxf /k8s_cache_${kube_offline_version}.tgz -C /"
 第一个 master 节点（deploy 节点）
 
 ```bash
-mv -f /k8s_cache/version.yml /etc/ansible/group_vars/all/version.yml
+cp -f /k8s_cache/version.yml /etc/ansible/group_vars/all/version.yml
 ```
 
 ## 2. 安装 nfs server
