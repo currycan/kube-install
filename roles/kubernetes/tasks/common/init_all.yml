@@ -37,6 +37,16 @@
       - { src: "kubelet/kubelet-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
       - { src: "kube-proxy/kube-proxy-config.yaml", dest: "{{ kube_proxy_data_dir }}/config.yaml" }
 
+  - name: 配置 kubelet-pre-start.sh
+    template:
+      src: "{{ item.src }}.j2"
+      dest: "{{ item.dest }}"
+      owner: root
+      group: root
+      mode: 0755
+    with_items:
+      - { src: "kubelet/kubelet-pre-start.sh", dest: "/usr/bin/kubelet-pre-start.sh" }
+
   ## 1.15.12 匿名用户报错：
   # https://happywzy.top/k8s-master-jie-dian-notready/
   # kubectl create clusterrolebinding test:anonymous --clusterrole=cluster-admin --user=system:anonymous
