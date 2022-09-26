@@ -2,11 +2,23 @@
 net.ipv4.tcp_keepalive_time = 600
 net.ipv4.tcp_keepalive_intvl = 30
 net.ipv4.tcp_keepalive_probes = 10
+Pod 调参汇总
+# socket buffer优化
+net.ipv4.tcp_wmem = 4096        16384   4194304
+net.ipv4.tcp_rmem = 4096        87380   6291456
+net.ipv4.tcp_mem = 381462       508616  762924
+net.core.rmem_default = 8388608
+net.core.rmem_max = 26214400 # 读写 buffer 调到 25M 避免大流量时导致 buffer 满而丢包 "netstat -s" 可以看到 receive buffer errors 或 send buffer errors
+net.core.wmem_max = 26214400
 # 可能会出现两种异常情况：
 # 1.对端服务器发完最后一个 Fin 包,没有收到当前服务器返回最后一个 Ack,又重发了 Fin 包,因为新的 TimeWait 没有办法创建 ,这个连接在当前服务器上就消失了,对端服务器将会收到一个 Reset 包。因为这个连接是明确要关闭的,所以收到一个 Reset 也不会有什么大问题。(但是违反了 TCP/IP 协议)
 # 2.因为这个连接在当前服务器上消失,那么刚刚释放的端口可能被立刻使用,如果这时对端服务器没有释放连接,当前服务器就会收到对端服务器发来的 Reset 包。如果当前服务器是代理服务器,就可能会给用户返回 502 错误。(这种异常对服务或者用户是有影响的)
-net.ipv4.tcp_max_tw_buckets = 5000
+net.ipv4.tcp_max_tw_buckets = 131072 # 这个优化意义不大
+net.ipv4.tcp_timestamps = 1  # 通常默认本身是开启的
 net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_tw_reuse = 1 # 仅对客户端有效果,对于高并发客户端,可以复用TIME_WAIT连接端口,避免源端口耗尽建连失败
+net.ipv4.ip_local_port_range = "1024 65535" # 对于高并发客户端,加大源端口范围,避免源端口耗尽建连失败（确保容器内不会监听源端口范围的端口)
+net.ipv4.tcp_fin_timeout = 30 # 缩短TIME_WAIT时间,加速端口回收
 # 时间戳可以避免序列号的卷绕。一个1Gbps的链路肯定会遇到以前用过的序列号。时间戳能够让内核接受这种“异常”的数据包。这里需要将其关掉
 net.ipv4.tcp_max_syn_backlog = 2621440
 # 服务器SYN+ACK报文重试次数,尽快释放等待资源
@@ -76,15 +88,15 @@ vm.dirty_writeback_centisecs = 50
 vm.dirtytime_expire_seconds = 43200
 
 # max-file 表示系统级别的能够打开的文件句柄的数量, 一般如果遇到文件句柄达到上限时,会碰到"Too many open files"或者Socket/File: Can't open so many files等错误。
-fs.file-max = 52706963
+fs.file-max = 52706963 # 提升文件句柄上限,像 nginx 这种代理,每个连接实际分别会对 downstream 和 upstream 占用一个句柄,连接量大的情况下句柄消耗就大。
 fs.nr_open = 52706963
-fs.may_detach_mounts = 1
 # 每个网络接口接收数据包的速率比内核处理这些包的速率快时,允许送到队列的数据包的最大数目。
 fs.inotify.max_queued_events = 524288
 # 默认值: 128 指定了每一个real user ID可创建的inotify instatnces的数量上限
-fs.inotify.max_user_instances = 524288
+fs.inotify.max_user_instances = 524288 # 表示同一用户同时最大可以拥有的 inotify 实例 (每个实例可以有很多 watch)
 # 默认值: 8192 指定了每个inotify instance相关联的watches的上限
-fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_watches = 524288 # 表示同一用户同时可以添加的watch数目(watch一般是针对目录,决定了同时同一用户可以监控的目录数量) 默认值 8192 在容器场景下偏小,在某些情况下可能会导致 inotify watch 数量耗尽,使得创建 Pod 不成功或者 kubelet 无法启动成功,将其优化到 524288
+上一页
 fs.protected_hardlinks = 1
 fs.protected_symlinks = 1
 
