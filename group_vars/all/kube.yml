@@ -80,6 +80,8 @@ apiserver_extra_args:
   requestheader-allowed-names: ""
   # 在信任请求头中以 --requestheader-username-headers 指示的用户名之前，用于验证接入请求中客户端证书的根证书捆绑。
   requestheader-client-ca-file: "{{ front_ca }}"
+  proxy-client-cert-file: "{{ front_client }}"
+  proxy-client-key-file: "{{ front_client_key }}"
   requestheader-extra-headers-prefix: "X-Remote-Extra-"
   requestheader-group-headers: "X-Remote-Group"
   requestheader-username-headers: "X-Remote-User"
