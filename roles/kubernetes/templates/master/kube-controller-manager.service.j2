@@ -7,7 +7,9 @@ Documentation=https://github.com/kubernetes/kubernetes
 [Service]
 ExecStart=/usr/bin/kube-controller-manager \
   --allocate-node-cidrs=true \
+{% if (kube_version is version('1.23.0', '<')) %}
   --alsologtostderr=true \
+{% endif %}
   --attach-detach-reconcile-sync-period=1m0s \
   --authentication-kubeconfig={{kubernetes_etc_dir}}/controller-manager.conf \
   --authorization-kubeconfig={{kubernetes_etc_dir}}/controller-manager.conf \
@@ -32,8 +34,10 @@ ExecStart=/usr/bin/kube-controller-manager \
   --kube-api-qps=100 \
   --kubeconfig={{kubernetes_etc_dir}}/controller-manager.conf \
   --leader-elect=true \
+{% if (kube_version is version('1.23.0', '<')) %}
   --log-dir={{ kubernetes_log_dir }}/kube-controller-manager \
   --logtostderr=false \
+{% endif %}
   --profiling=false \
   --requestheader-allowed-names= \
   --requestheader-client-ca-file={{ front_ca }} \

@@ -8,7 +8,9 @@ Documentation=https://github.com/kubernetes/kubernetes
 ExecStart=/usr/bin/kube-apiserver \
   --advertise-address={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
   --allow-privileged=true \
+{% if (kube_version is version('1.23.0', '<')) %}
   --alsologtostderr=true \
+{% endif %}
   --anonymous-auth=false \
   --api-audiences=api,istio-ca \
   --apiserver-count={{ (groups['kube_masters']| difference(groups['delete_masters'])) |length }}  \
@@ -41,8 +43,10 @@ ExecStart=/usr/bin/kube-apiserver \
   --kubelet-certificate-authority={{ kubernetes_ca }} \
   --kubelet-client-certificate={{ apiserver_kubelet_cert }} \
   --kubelet-client-key={{ apiserver_kubelet_cert_key }} \
+{% if (kube_version is version('1.23.0', '<')) %}
   --log-dir={{ kubernetes_log_dir }}/kube-apiserver \
   --logtostderr=false \
+{% endif %}
   --max-mutating-requests-inflight=500 \
   --max-requests-inflight=1500 \
   --profiling=false \

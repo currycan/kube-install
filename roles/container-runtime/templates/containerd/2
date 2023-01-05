@@ -1,11 +1,9 @@
-# Kubernetes doesn't use containerd restart manager.
-disabled_plugins = ["io.containerd.internal.v1.restart"]
+disabled_plugins = []
 imports = []
-oom_score = -999
+oom_score = 0
 plugin_dir = ""
-# Kubernetes requires the cri plugin.
-required_plugins = ["io.containerd.grpc.v1.cri"]
-root = "{{ containerd_data_dir }}"
+required_plugins = []
+root = "{{ CONTAINERD_STORAGE_DIR }}"
 state = "/run/containerd"
 temp = ""
 version = 2
@@ -17,11 +15,11 @@ version = 2
   address = ""
   format = ""
   gid = 0
-  level = "info"
+  level = ""
   uid = 0
 
 [grpc]
-  address = "{{ cri_socket }}"
+  address = "/run/containerd/containerd.sock"
   gid = 0
   max_recv_message_size = 16777216
   max_send_message_size = 16777216
@@ -36,6 +34,7 @@ version = 2
   grpc_histogram = false
 
 [plugins]
+
   [plugins."io.containerd.gc.v1.scheduler"]
     deletion_threshold = 0
     mutation_threshold = 100
@@ -55,11 +54,11 @@ version = 2
     enable_unprivileged_icmp = false
     enable_unprivileged_ports = false
     ignore_image_defined_volumes = false
-    max_concurrent_downloads = 5
+    max_concurrent_downloads = 3
     max_container_log_line_size = 16384
     netns_mounts_under_state_dir = false
     restrict_oom_score_adj = false
-    sandbox_image = "{{ images.infra.name }}"
+    sandbox_image = "{{ SANDBOX_IMAGE }}"
     selinux_category_range = 1024
     stats_collect_period = 10
     stream_idle_timeout = "4h0m0s"
@@ -70,9 +69,9 @@ version = 2
     unset_seccomp_profile = ""
 
     [plugins."io.containerd.grpc.v1.cri".cni]
-      bin_dir = "{{ cni_bin_dir }}"
-      conf_dir = "{{ cni_etc_dir }}"
-      conf_template = ""
+      bin_dir = "{{ bin_dir }}"
+      conf_dir = "/etc/cni/net.d"
+      conf_template = "/etc/cni/net.d/10-default.conf"
       max_conf_num = 1
 
     [plugins."io.containerd.grpc.v1.cri".containerd]
@@ -137,14 +136,20 @@ version = 2
       [plugins."io.containerd.grpc.v1.cri".registry.auths]
 
       [plugins."io.containerd.grpc.v1.cri".registry.configs]
-        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ local_image_repo }}".tls]
-            insecure_skip_verify = true
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."easzlab.io.local:5000".tls]
+          insecure_skip_verify = true
+
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ HARBOR_REGISTRY }}".tls]
+          insecure_skip_verify = true
 
       [plugins."io.containerd.grpc.v1.cri".registry.headers]
 
       [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ local_image_repo }}"]
-          endpoint = ["https://{{ local_image_repo }}"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."easzlab.io.local:5000"]
+          endpoint = ["http://easzlab.io.local:5000"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ HARBOR_REGISTRY }}"]
+          endpoint = ["https://{{ HARBOR_REGISTRY }}"]
+{% if ENABLE_MIRROR_REGISTRY %}
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
           endpoint = ["https://docker.nju.edu.cn/", "https://kuamavit.mirror.aliyuncs.com"]
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
@@ -157,6 +162,7 @@ version = 2
           endpoint = ["https://ghcr.nju.edu.cn"]
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."nvcr.io"]
           endpoint = ["https://ngc.nju.edu.cn"]
+{% endif %}
 
     [plugins."io.containerd.grpc.v1.cri".x509_key_pair_streaming]
       tls_cert_file = ""

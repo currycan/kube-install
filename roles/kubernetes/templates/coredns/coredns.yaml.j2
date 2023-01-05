@@ -86,7 +86,9 @@ data:
         proxy . /etc/resolv.conf
 {% else %}
         forward . /etc/resolv.conf {
+{% if (coredns_version is version('1.6.9', '>=')) %}
           max_concurrent 1000
+{% endif %}
         }
 {% endif %}
         cache 30

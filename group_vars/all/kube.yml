@@ -17,7 +17,7 @@ system_reserved_enabled: false
 feature_gates:
   # kubectl debug 1.16.0 新增特性 , 默认关闭
   EphemeralContainers: true
-  TTLAfterFinished: true
+  # TTLAfterFinished: true
   RotateKubeletServerCertificate: true
   # # 1.20 中新增特性，默认关闭, 1.21 版本中是默认启用
   # GracefulNodeShutdown: true
@@ -47,7 +47,7 @@ apiserver_disable_admission_plugins: []
 ## Extra args for k8s components passing by kubeadm
 apiserver_extra_args:
   allow-privileged: "true"
-  alsologtostderr: "true"
+  # alsologtostderr: "true"
   apiserver-count: "{{ (groups['kube_masters']| difference(groups['delete_masters'])) | unique | length }}"
   api-audiences: "api,istio-ca"
   audit-log-path: "{{ kubernetes_log_dir }}/audit/apiserver_audit.log"
@@ -64,8 +64,8 @@ apiserver_extra_args:
   kubelet-certificate-authority: "{{ kubernetes_ca }}"
   kubelet-client-certificate: "{{ apiserver_kubelet_cert }}"
   kubelet-client-key: "{{ apiserver_kubelet_cert_key }}"
-  log-dir: "{{ kubernetes_log_dir }}/kube-apiserver"
-  logtostderr: "false"
+  # log-dir: "{{ kubernetes_log_dir }}/kube-apiserver"
+  # logtostderr: "false"
   # 在给定时间内的最大 non-mutating 请求数，默认 400，可以调整至 1000
   max-requests-inflight: "1500"
   # 在给定时间内的最大 mutating 请求数，调整 apiserver 的流控 qos，可以调整至 3000，默认为 200
@@ -92,7 +92,7 @@ apiserver_extra_args:
   v: "2"
 
 controller_extra_args:
-  alsologtostderr: "true"
+  # alsologtostderr: "true"
   allocate-node-cidrs: "true"
   attach-detach-reconcile-sync-period: "1m0s"
   cluster-cidr: "{{ pod_network_cidr }}"
@@ -111,7 +111,7 @@ controller_extra_args:
   kube-api-qps: "100"
   # 可以调整至 100，默认值为 30
   kube-api-burst: "100"
-  logtostderr: "false"
+  # logtostderr: "false"
   # 使用 --requestheader-username-headers 指定的，允许在头部提供用户名的客户端证书通用名称列表。
   # 如果为空，任何通过 --requestheader-client-ca-file 中 authorities 验证的客户端证书都是被允许的。
   # 在信任请求头中以 --requestheader-username-headers 指示的用户名之前，用于验证接入请求中客户端证书的根证书捆绑。
@@ -120,12 +120,12 @@ controller_extra_args:
   service-cluster-ip-range: "{{ service_subnet }}"
 
 scheduler_extra_args:
-  alsologtostderr: "true"
+  # alsologtostderr: "true"
   # 可以调整至 100，默认值为 20
   kube-api-qps: "100"
   # 可以调整至 100，默认值为 30
   kube-api-burst: "100"
-  logtostderr: "false"
+  # logtostderr: "false"
   # 使用 --requestheader-username-headers 指定的，允许在头部提供用户名的客户端证书通用名称列表。
   # 如果为空，任何通过 --requestheader-client-ca-file 中 authorities 验证的客户端证书都是被允许的。
   requestheader-allowed-names: ""

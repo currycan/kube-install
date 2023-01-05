@@ -12,10 +12,14 @@ ExecStart=/usr/bin/kube-scheduler \
   --kube-api-qps=100 \
   --kubeconfig={{kubernetes_etc_dir}}/scheduler.conf \
   --leader-elect=true \
+{% if (kube_version is version('1.23.0', '<')) %}
   --log-dir={{ kubernetes_log_dir }}/kube-scheduler \
   --logtostderr=false \
+{% endif %}
   --profiling=false \
+{% if (kube_version is version('1.23.0', '<')) %}
   --alsologtostderr=true \
+{% endif %}
   --authentication-kubeconfig={{kubernetes_etc_dir}}/scheduler.conf \
   --authorization-kubeconfig={{kubernetes_etc_dir}}/scheduler.conf \
   --requestheader-allowed-names= \
