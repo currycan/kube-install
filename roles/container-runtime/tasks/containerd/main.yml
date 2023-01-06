@@ -40,7 +40,7 @@
 
 - name: crictl 命令自动补全
   changed_when: true
-  command: >
+  shell: >
     crictl completion bash > /etc/bash_completion.d/crictl;
     source /etc/bash_completion.d/crictl
 

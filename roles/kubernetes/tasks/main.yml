@@ -138,7 +138,7 @@
   - name: 手动 approve csr
     shell: >
       [ `kubectl get csr | grep 'Pending' | wc -l` -ne 0 ] && \
-      kubectl get csr | grep 'Pending' | awk '{print $1}'| xargs kubectl certificate approve || exit 0
+      kubectl get csr | grep Pending | awk '{print $1}' | xargs -L 1 kubectl certificate approve|| exit 0
     environment:
         KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
     args:
@@ -167,15 +167,15 @@
     no_log: true
     with_items: "{{ slurp_kubeconfig.results }}"
 
-  - name: 禁止 master 节点被调度，设置节点标签
+  - name: master 设置节点标签，并设置污点（禁止调度）
     when: inventory_hostname in groups['kube_masters']
     shell: >
       {% if groups['kube_masters'] | length > 1 -%}
         kubectl cordon {{ inventory_hostname }};
         kubectl taint node {{ inventory_hostname }} node-role.kubernetes.io/master=true:NoSchedule --overwrite;
-        kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/control-plane='' --overwrite;
-        kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master='' --overwrite;
       {%- endif -%}
+      kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master='' --overwrite;
+      kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/control-plane='' --overwrite;
       kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/ingress='' --overwrite
     until: set_taint_master.rc == 0
     retries: 3
