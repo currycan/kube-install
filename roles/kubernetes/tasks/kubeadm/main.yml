@@ -28,3 +28,10 @@
 - include_tasks: master.yml
 
 - include_tasks: worker.yml
+
+- name: 启动 kubelet
+  systemd:
+    name: kubelet
+    daemon_reload: yes
+    state: started
+    enabled: yes

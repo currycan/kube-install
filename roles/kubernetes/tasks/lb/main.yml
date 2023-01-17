@@ -101,7 +101,7 @@
       shell: "{{ item }} || true"
       with_items:
       - ip link del lvscare
-      - crictl rm -f $(crictl ps -qa)
+      - crictl rm -f $(crictl ps --name=lb-${lb}.* -qa)
 
     - name: 重启网络
       when: lb_mode == "kube-vip" or lb_mode == "kube-lvscare"

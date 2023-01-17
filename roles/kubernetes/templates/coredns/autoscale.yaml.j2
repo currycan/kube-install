@@ -81,7 +81,10 @@ spec:
       labels:
         k8s-app: kube-dns-autoscaler
       annotations:
+        {%- if (kube_version is version('1.19.0', '<')) %}
         seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        {%- endif %}
+
     spec:
       priorityClassName: system-cluster-critical
       securityContext:
@@ -111,5 +114,5 @@ spec:
       - key: "CriticalAddonsOnly"
         operator: "Exists"
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       serviceAccountName: kube-dns-autoscaler

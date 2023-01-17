@@ -54,6 +54,7 @@
     with_items: "{{ slurp_kubernetes_ca_certs.results }}"
     when: inventory_hostname in (groups['kube_nodes'] | difference(groups['delete_nodes']) | unique)
   when:
+    - groups['kube_masters'] | difference(groups['delete_masters']) | unique | length > 1
     - add_etcds_task is undefined
     - add_masters_task is undefined
 

@@ -8,12 +8,6 @@
     - add_masters_task is undefined
   include_tasks: _kubecerts.yml
 
-- name: 生成 kube-config 文件
-  when:
-    - add_etcds_task is undefined
-    - inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)
-  include_tasks: "{{ inventory_dir }}/roles/certificates/tasks/kube-config/main.yml"
-
 - name: 分发 kubernetes kuber-config 文件到各 kubernetes 集群节点
   when:
     - add_etcds_task is undefined

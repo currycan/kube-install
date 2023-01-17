@@ -48,7 +48,7 @@ kubernetesVersion: v{{ kube_version }}
 clusterName: {{ cluster_name }}
 controlPlaneEndpoint: "{{ kube_master_external_domain[0] }}:{%- if groups['kube_masters'] | length == 1 or lb_mode == 'kube-vip' or lb_mode == 'kube-lvscare' -%}6443{%- else -%}8443{%- endif %}"
 certificatesDir: {{ k8s_pki_dir }}
-{% if (kube_version is version('1.15.0', '>=') and (kube_version is version('1.24.0', '<')) %}
+{% if (kube_version is version('1.15.0', '>=')) and (not skip_coredns | bool) %}
 dns:
   type: CoreDNS
 {% if (kube_version is version('1.21.2', '>=')) %}
