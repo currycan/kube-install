@@ -111,6 +111,7 @@
   - ip link del cilium_vxlan
   - ip link del ovn0
   - ip link del ovs-system
+  - ip link del lvscare
 
 - name: 重新加载 daemon
   systemd:
@@ -146,6 +147,16 @@
   - 'crictl completion'
   - 'kubectl completion'
   - 'kubeadm completion'
+
+- name: 删除 hosts 文件中手动写入的 kube-apiserver 域名
+  lineinfile :
+    path: /etc/hosts
+    state: absent
+    regexp: "{{ item }}"
+  with_items:
+  - "{{ lb_apiserver_ip }}"
+  - "kube-apiserver"
+  - "^\n"
 
 - name: umount docker 相关文件或目录
   mount:

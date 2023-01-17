@@ -1,5 +1,7 @@
 ---
-{% if (kube_version is version('1.15.0', '>=')) %}
+{% if (kube_version is version('1.22.0', '>=')) %}
+apiVersion: kubeadm.k8s.io/v1beta3
+{% elif (kube_version is version('1.15.0', '>=')) %}
 apiVersion: kubeadm.k8s.io/v1beta2
 {% else %}
 apiVersion: kubeadm.k8s.io/v1beta1
@@ -35,7 +37,9 @@ bootstrapTokens:
   - signing
   - authentication
 ---
-{% if (kube_version is version('1.15.0', '>=')) %}
+{% if (kube_version is version('1.22.0', '>=')) %}
+apiVersion: kubeadm.k8s.io/v1beta3
+{% elif (kube_version is version('1.15.0', '>=')) %}
 apiVersion: kubeadm.k8s.io/v1beta2
 {% else %}
 apiVersion: kubeadm.k8s.io/v1beta1
@@ -43,9 +47,9 @@ apiVersion: kubeadm.k8s.io/v1beta1
 kind: ClusterConfiguration
 kubernetesVersion: v{{ kube_version }}
 clusterName: {{ cluster_name }}
-controlPlaneEndpoint: "{%- if groups['kube_masters'] | length == 1 -%}{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}:6443{%- else -%}{{ lb_apiserver_ip }}:{{ lb_secure_port }}{%- endif %}"
+controlPlaneEndpoint: "{{ kube_master_external_domain[0] }}:{%- if groups['kube_masters'] | length == 1 or lb_mode == 'kube-vip' or lb_mode == 'kube-lvscare' -%}6443{%- else -%}8443{%- endif %}"
 certificatesDir: {{ k8s_pki_dir }}
-{% if (kube_version is version('1.15.0', '>=')) %}
+{% if (kube_version is version('1.15.0', '>=') and (kube_version is version('1.24.0', '<')) %}
 dns:
   type: CoreDNS
 {% if (kube_version is version('1.21.2', '>=')) %}

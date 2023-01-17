@@ -24,7 +24,8 @@ else
   modprobe -- nf_conntrack_ipv4
 fi
 
-sysctl --system
+sysctl -p /etc/sysctl.d/95-k8s-sysctl.conf
+
 # systemctl stop firewalld && systemctl disable firewalld
 swapoff -a
 disable_selinux

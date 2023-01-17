@@ -111,6 +111,14 @@
   with_items:
     - "95-k8s-sysctl.conf"
 
+- name: 修改 net.ipv4.ip_forward 内核参数
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
 - name: 生效系统参数
   changed_when: true
   command: "sysctl -p /etc/sysctl.d/{{ item }}"

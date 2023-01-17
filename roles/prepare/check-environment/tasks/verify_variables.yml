@@ -33,26 +33,19 @@
     that: (groups['etcds']|length is odd) or ((groups['etcds']|length + groups['add_etcds']|length) is odd)
     msg: "初始化集群时 etcd 节点只能为奇数个，当前 {{ groups['etcds']|length }} 个，请添加或减少 etcd 节点数量至奇数个。"
 
-- name: 校验 lb 模式类型
-  run_once: true
-  assert:
-    that: lb_mode in ['openresty','nginx','haproxy','envoy','slb']
-    msg: "不支持当前 {{ lb_mode }} 负载均衡模式，请在 ['nginx','haproxy','envoy','slb'] 中进行选择。"
-
-- name: 校验 lb 节点组非空时 lb_apiserver_ip 是否赋值
-  run_once: true
-  assert:
-    that: lb_apiserver_ip is defined
-    msg: "请设置 lb_apiserver_ip 以启用 keepalive。"
-
-- name: 校验 slb 模式 lb_apiserver_ip 是否赋值
-  run_once: true
-  assert:
-    that: lb_apiserver_ip is defined
-    msg: "当前负载均衡为 slb 模式，请将 slb 的 ip 地址赋值给变量 lb_apiserver_ip。"
-  when: lb_mode == 'slb'
-
 - block:
+  - name: 校验 lb 模式类型
+    run_once: true
+    assert:
+      that: lb_mode in ['openresty','nginx','haproxy','envoy','slb', 'kube-vip', 'kube-lvscare']
+      msg: "不支持当前 {{ lb_mode }} 负载均衡模式，请在 ['openresty','nginx','haproxy','envoy','slb', 'kube-vip', 'kube-lvscare'] 中进行选择。"
+
+  - name: 校验 lb_apiserver_ip 是否赋值
+    run_once: true
+    assert:
+      that: lb_apiserver_ip is defined
+      msg: "请设置 lb_apiserver_ip, 以配置高可用集群"
+
   - name: 校验 lb_apiserver_ip 是否符合 IP 规则
     run_once: true
     assert:
@@ -63,15 +56,16 @@
     assert:
       that: lb_apiserver_ip != "{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
       msg: "lb_apiserver_ip 不能设置为集群节点的 IP。"
-  when: lb_apiserver_ip is defined
 
-- name: 校验 lb 模式端口设置
-  assert:
-    that: lb_secure_port|int == 8443
-    msg: "当前 {{ inventory_hostname }} 节点 8443 端口已使用，请更换端口。"
+  - name: 校验 lb keepalived 模式下端口是否冲突(非 kube-vip 和 kube-lvscare 模式)
+    assert:
+      that: lb_secure_port | int == 8443
+      msg: "当前 {{ inventory_hostname }} 节点 8443 端口已使用，请更换端口。"
+    when:
+    - lb_mode != 'kube-vip'
+    - lb_mode != 'kube-lvscare'
   when:
-  - lb_apiserver_ip is not defined
-  - inventory_hostname in (groups['kube_masters']|unique)
+  - groups['kube_masters'] | length > 1
 
 - name: 校验 k8s 版本和container runtime 关联，默认 1.24+ 版本废弃 docker 只能使用 containerd
   when: kube_version is version('1.24.0', '>=')

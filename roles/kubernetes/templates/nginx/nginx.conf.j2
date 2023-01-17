@@ -11,6 +11,12 @@ events {
 }
 
 stream {
+    log_format main '$remote_addr [$time_local] '
+        '$protocol $status $bytes_sent $bytes_received '
+        '$session_time "$upstream_addr" "$upstream_session_time"'
+        '"$upstream_bytes_sent" "$upstream_bytes_received" "$upstream_connect_time"';
+    access_log  /var/log/nginx/k8s-access.log  main;
+
     upstream kube_apiserver {
         least_conn;
 {% for host in (groups['kube_masters'] | difference(groups['delete_masters']) | unique) %}

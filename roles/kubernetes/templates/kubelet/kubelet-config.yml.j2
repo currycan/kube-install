@@ -162,8 +162,8 @@ tlsCipherSuites:
 volumePluginDir: /usr/libexec/kubernetes/kubelet-plugins/volume/exec/
 volumeStatsAggPeriod: 1m0s
 AllowedUnsafeSysctls:
-- net.core.somaxconn
-- kernel.msg*
+- "net.core.somaxconn"
+- "kernel.msg*"
 kernelMemcgNotification: false
 protectKernelDefaults: false
 topologyManagerPolicy: "none"

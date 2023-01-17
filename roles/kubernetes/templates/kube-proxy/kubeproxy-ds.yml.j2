@@ -34,7 +34,10 @@ spec:
   template:
     metadata:
       annotations:
+        {%- if (kube_version is version('1.22.0', '<')) %}
         scheduler.alpha.kubernetes.io/critical-pod: ""
+        {%- endif %}
+
       labels:
         k8s-app: kube-proxy
     spec:

@@ -11,8 +11,6 @@
     - "{{ kubernetes_log_dir }}/kube-controller-manager"
     - "{{ kubernetes_log_dir }}/kube-scheduler"
     - "{{ rbac_dir }}"
-    - "{{ addons_dir }}/coredns"
-    - "{{ addons_dir }}/kube-proxy"
 
   - block:
     - name: 生成 encryption config

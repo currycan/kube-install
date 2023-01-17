@@ -6,7 +6,7 @@ kube_image_repository: registry.cn-hangzhou.aliyuncs.com/google_containers
 kube_master_external_ip:
   - "8.8.8.8"
 kube_master_external_domain:
-  - "apiserver.cluster.local"
+  - "apiserver.k8s.local"
 
 # kubelet 参数
 kubelet_max_pods: 128

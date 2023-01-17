@@ -5,7 +5,7 @@ ExecStart=/usr/bin/kubelet \
 {% if (kube_version is version('1.27.0', '<')) %}
   --container-runtime=remote \
 {% endif %}
-  --container-runtime-endpoint=unix://{{ cri_socket }} \
+  --container-runtime-endpoint={% if (kube_version is version('1.28.0', '<')) %}unix://{{ cri_socket }}{% else %}criSocket://{{ cri_socket }}{% endif %} \
 {% else %}
   --pod-infra-container-image={{ images.infra.name }} \
 {% endif %}

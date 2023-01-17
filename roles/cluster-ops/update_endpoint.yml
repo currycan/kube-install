@@ -1,14 +1,12 @@
 - block:
   - name: 创建 endpoint 配置清单目录
-    when: inventory_hostname in groups['kube_masters']
     file:
       name: "{{ item }}"
       state: directory
       mode: 0664
     with_items: "{{ kubernetes_etc_dir }}/endpoint"
 
-  - name: 配置核心组件的 endpoint 清单文件，以便用于prometheus监控
-    when: inventory_hostname in groups['kube_masters']
+  - name: 配置核心组件的 endpoint 清单文件, 以便用于prometheus监控
     template:
       src: "{{ inventory_dir }}/roles/kubernetes/templates/endpoint/{{ item }}.j2"
       dest: "{{ kubernetes_etc_dir }}/endpoint/{{ item }}"
@@ -28,3 +26,4 @@
     delay: "{{ retry_stagger }}"
     run_once: "{{ enable_run_once | default(true) }}"
     delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
+  when: inventory_hostname in groups['kube_masters']

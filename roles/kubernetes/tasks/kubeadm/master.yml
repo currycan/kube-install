@@ -25,7 +25,14 @@
         rm -f {{ kubelet_data_dir }}/cpu_manager_state;
         rm -f {{ kubelet_data_dir }}/memory_manager_state;
         rm -f {{ manifest_dir }}/kube-*;
-        kubeadm init --config={{ kubernetes_etc_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
+        kubeadm init \
+          {% if skip_kube_proxy | bool -%}
+          --skip-phases=addon/kube-proxy \
+          {% endif -%}
+          {% if skip_coredns | bool -%}
+          --skip-phases=addon/coredns \
+          {% endif -%}
+          --config={{ kubernetes_etc_dir }}/kubeadm-config.yaml --upload-certs
       register: init_rslt
       # until: init_rslt.rc == 0
       # retries: 3
@@ -48,10 +55,23 @@
 
   - name: 获取其他 master 节点各组件状态
     shell: >
-      kubectl get nodes | grep {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} | wc -l
+      kubectl get nodes | grep {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} | wc -l || exit 0
     environment:
       KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
     register: get_nodes_result
+    delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
+
+  # - name: 生成 master 节点 join token
+  #   shell: >
+  #     echo $(kubeadm token create --print-join-command --ttl=10m) --certificate-key $(kubeadm init phase upload-certs --upload-certs | sed -n '3p')
+  #   environment:
+  #     KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+  #   run_once: true
+  #   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
+  #   register: master_kubeadm_join_cmd
+
+  # - set_fact:
+  #     kubeadm_join: "{{ master_kubeadm_join_cmd.stdout }}"
 
   - block:
     - debug: msg="其他 master 节点加入集群，可能需要一定时间。。"
@@ -61,17 +81,10 @@
         systemctl stop kubelet.service;
         rm -f {{ kubelet_data_dir }}/cpu_manager_state;
         rm -f {{ kubelet_data_dir }}/memory_manager_state;
-        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
+        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml \
+          --ignore-preflight-errors=all
       register: master_join_rslt
       ignore_errors: true
-
-    # - name: 生成 master 节点 join token
-    #   shell: >
-    #     kubeadm token create --print-join-command --ttl=0
-    #   register: master_kubeadm_join_cmd
-
-    # - set_fact:
-    #     kubeadm_join: "{{ master_kubeadm_join_cmd.stdout }}"
 
     # - debug: msg="其他 master 节点加入集群，可能需要一定时间。。"
     # - name: 其他 master 节点加入集群
