@@ -60,7 +60,7 @@ apiserver_extra_args:
   # anonymous-auth: "false"
   enable-aggregator-routing: "true"
   enable-bootstrap-token-auth: "true"
-  encryption-provider-config: "{{ k8s_pki_dir }}/secrets-encryption.yaml"
+  encryption-provider-config: "{{ kubernetes_etc_dir }}/enc/secrets-encryption.yaml"
   kubelet-certificate-authority: "{{ kubernetes_ca }}"
   kubelet-client-certificate: "{{ apiserver_kubelet_cert }}"
   kubelet-client-key: "{{ apiserver_kubelet_cert_key }}"
@@ -139,7 +139,11 @@ scheduler_extra_args:
 #    hostPath: /host/path
 #    mountPath: /mount/path
 #    readOnly: true
-apiserver_extra_volumes: {}
+apiserver_extra_volumes:
+  - name: secrets-encryption
+    hostPath: "{{ kubernetes_etc_dir }}/enc/secrets-encryption.yaml"
+    mountPath: "{{ kubernetes_etc_dir }}/enc/secrets-encryption.yaml"
+    readOnly: true
 controller_manager_extra_volumes: {}
 scheduler_extra_volumes:
   - name: k8s-certs

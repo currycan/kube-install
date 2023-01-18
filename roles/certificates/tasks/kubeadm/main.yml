@@ -1,11 +1,11 @@
 - name: 离线安装 kubeadm
-  when: install_way != 'binary'
+  when: setup_way != 'binary'
   yum:
     name: "{{ cache_dir }}/kubernetes/*kubeadm*.rpm"
     state: present
 
 - name: 二进制安装 kubeadm
-  when: install_way == 'binary'
+  when: setup_way == 'binary'
   copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"

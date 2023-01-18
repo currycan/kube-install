@@ -1,0 +1,4 @@
+setup_way: "{%- if setup is undefined -%}binary{% else%}{{ setup }}{% endif %}"
+startup_way: "{%- if startup is undefined -%}kubeadm{% else%}{{ startup }}{% endif %}"
+install_way: "{%- if install is undefined -%}command{% else%}{{ install }}{% endif %}"
+certs_way: "{%- if certs is undefined -%}kube-certs{% else%}{{ certs }}{% endif %}"

@@ -33,10 +33,10 @@
     register: docker_rpm_install
     failed_when: docker_rpm_install.rc != 0 and "is already installed" not in docker_rpm_install.stderr
     changed_when: docker_rpm_install.rc == 0
-  when: install_way != 'binary'
+  when: setup_way != 'binary'
 
 - name: 二进制安装 docker
-  when: install_way == 'binary'
+  when: setup_way == 'binary'
   copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"

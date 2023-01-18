@@ -6,6 +6,7 @@
       mode: 0644
     with_items:
     - "{{ kubernetes_etc_dir }}/audit"
+    - "{{ kubernetes_etc_dir }}/enc"
     - "{{ kubernetes_log_dir }}/audit"
     - "{{ kubernetes_log_dir }}/kube-apiserver"
     - "{{ kubernetes_log_dir }}/kube-controller-manager"
@@ -35,12 +36,12 @@
         mode: "0644"
       with_items:
         #  EncryptionConfig 密钥注意不能修改，也就是不要重复生成。https://github.com/kubernetes/kubernetes/issues/66844
-        - { src: "encryption/config.yaml", dest: "{{ k8s_pki_dir }}/secrets-encryption.yaml" }
+        - { src: "encryption/config.yaml", dest: "{{ kubernetes_etc_dir }}/enc/secrets-encryption.yaml" }
         - { src: "audit/policy.yaml", dest: "{{ kubernetes_etc_dir }}/audit/policy.yaml" }
     when: add_masters_task is undefined
 
   - name: 加载 master 节点各组件镜像
-    when: startup == 'kubeadm'
+    when: startup_way == 'kubeadm'
     command: >
       {% if container_runtime == 'docker' -%}
         docker load -i {{ cache_dir }}/images/master.tar.gz

@@ -3,7 +3,7 @@
     include_tasks: all.yml
 
   - name: 备份 systemctl 安装模式配置文件
-    when: startup != 'kubeadm'
+    when: startup_way != 'kubeadm'
     include_tasks: systemctl.yml
 
   - name: 清理临时文件目录

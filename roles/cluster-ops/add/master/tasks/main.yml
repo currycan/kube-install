@@ -30,7 +30,7 @@
 - block:
   - name: 获取 bootstrap_token
     shell: >
-      cat "{{ k8s_pki_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1
+      cat "{{ kubernetes_etc_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1
     register: get_bootstrap_token
 
   - name: 设置 bootstrap_token 变量

@@ -26,7 +26,7 @@
         - "{{ kubelet_data_dir }}"
 
     - name: 确认没有运行其他负载均衡器
-      when: lb_mode == "slb"
+      when: lb_mode == "slb" or lb_mode == "kube-vip" or lb_mode == "kube-lvscare"
       file:
         name: "{{ item }}"
         state: absent
@@ -120,14 +120,14 @@
           {%- endif %}
         state: restarted
 
-    - name: 以轮询的方式等待 {{ lb_mode }} 运行完成
-      when: lb_mode == "kube-vip" or lb_mode == "kube-lvscare"
-      shell: >
-        ip a | grep 192.168.100.100
-      register: lb_status
-      until: lb_status.rc == 0
-      retries: 8
-      delay: 15
+    # - name: 以轮询的方式等待 {{ lb_mode }} 运行完成
+    #   when: lb_mode == "kube-vip" or lb_mode == "kube-lvscare"
+    #   shell: >
+    #     ip a | grep {{ lb_apiserver_ip }}
+    #   register: lb_status
+    #   until: lb_status.rc == 0
+    #   retries: 8
+    #   delay: 15
 
     - name: 以轮询的方式等待 {{ lb_mode }} 运行完成
       when:

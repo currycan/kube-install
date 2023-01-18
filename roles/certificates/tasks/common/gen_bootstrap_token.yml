@@ -1,12 +1,12 @@
 - block:
   - name: 判断 gen_bootstrap_token 配置文件是否存在
     stat:
-      path: "{{ k8s_pki_dir }}/token.csv"
+      path: "{{ kubernetes_etc_dir }}/token.csv"
     register: check_token_file
 
   - name: 判断 bootstrap_token 是否已经写入配置文件
     when: check_token_file.stat.exists
-    command: "cat {{ k8s_pki_dir }}/token.csv"
+    command: "cat {{ kubernetes_etc_dir }}/token.csv"
     register: token_presence
 
   - block:
@@ -24,7 +24,7 @@
 
     - name: bootstrap_token 写入独立配置文件
       blockinfile:
-        path: "{{ k8s_pki_dir }}/token.csv"
+        path: "{{ kubernetes_etc_dir }}/token.csv"
         marker: ""
         block: |
           {{ bootstrap_token }},kubelet-bootstrap,10001,"system:kubelet-bootstrap"
@@ -32,7 +32,7 @@
 
     - name: 删除 blank lines blockinfile
       lineinfile :
-        path: "{{ k8s_pki_dir }}/token.csv"
+        path: "{{ kubernetes_etc_dir }}/token.csv"
         state: absent
         regexp: '^$'
     when: (not check_token_file.stat.exists) or (token_presence.skipped is defined and token_presence.stdout.find('kubelet-bootstrap') == -1)
@@ -44,7 +44,7 @@
     slurp:
       src: "{{ item }}"
     with_items:
-      - "{{ k8s_pki_dir }}/token.csv"
+      - "{{ kubernetes_etc_dir }}/token.csv"
     register: slurp_token_file
     run_once: true
     delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"

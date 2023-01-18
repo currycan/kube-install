@@ -13,7 +13,7 @@
     register: containerd_rpm_install
     failed_when: containerd_rpm_install.rc != 0 and "is already installed" not in containerd_rpm_install.stderr
     changed_when: containerd_rpm_install.rc == 0
-  when: install_way != 'binary'
+  when: setup_way != 'binary'
 
 - name: 二进制安装 containerd、cni 和 crictl
   copy:

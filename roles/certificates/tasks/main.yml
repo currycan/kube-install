@@ -22,29 +22,20 @@
   with_items:
     - "{{ k8s_pki_dir }}"
 
-- name: 确认证书创建方式
-  run_once: true
-  assert:
-    that: (enable_kubeadm_certs | bool) or (enable_openssl_certs | bool) or (enable_cfssl_certs | bool)
-    msg: "未指定证书创建方式，请指定，如：enable_kubeadm_certs=true。"
-
-- name: 校验证书创建方式和集群创建方式是否匹配
-  when: startup == 'kubeadm'
-  run_once: true
-  assert:
-    that: not enable_cfssl_certs | bool
-    msg: "kubeadm 创建集群，不支持 cfssl 证书， 请修改 enable_cfssl_certs=false ！"
+- name: kube-certs 方式安装生成证书
+  when: certs_way == 'kube-certs'
+  include_tasks: kube-certs/main.yml
 
 - name: kubeadm 方式安装生成证书
-  when: enable_kubeadm_certs | bool
+  when: certs_way == 'kubeadm'
   include_tasks: kubeadm/main.yml
 
 - name: cfssl 生成证书，仅支持 systemctl 安装方式
-  when: enable_cfssl_certs | bool
+  when: certs_way == 'cfssl'
   include_tasks: cfssl/main.yml
 
 - name: openssl 生成证书
-  when: enable_openssl_certs | bool
+  when: certs_way == 'openssl'
   include_tasks: openssl/main.yml
 
 - block:
@@ -60,11 +51,18 @@
       - "openssl genrsa -out {{ k8s_pki_dir }}/sa.key {{ cert_key_size }}"
       - "openssl {{ cert_key_algo }} -in {{ k8s_pki_dir }}/sa.key -pubout -out {{ k8s_pki_dir }}/sa.pub"
   when:
-    - enable_openssl_certs | bool or enable_cfssl_certs | bool
+    - certs_way == 'openssl' or certs_way == 'cfssl'
     - add_etcds_task is undefined
     - add_masters_task is undefined
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
+- name: 生成 kube-config 文件
+  when:
+    - inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)
+  include_tasks: "{{ inventory_dir }}/roles/certificates/tasks/kube-config/main.yml"
+
 - name: 同步证书和 kube-config 文件到各节点
+  when:
+    - inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)
   include_tasks: synchronize/main.yml

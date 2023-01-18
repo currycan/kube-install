@@ -101,7 +101,7 @@ lvremove /dev/k8s/data
 ### 1.5 准备离线文件
 
 ```bash
-kube_offline_version=1.23.1
+kube_offline_version=1.26.0
 curl -o /k8s_cache_${kube_offline_version}.tgz https://k8s-offline.oss-cn-shanghai.aliyuncs.com/k8s_cache_${kube_offline_version}.tgz
 ansible all -m copy -a "src=/k8s_cache_${kube_offline_version}.tgz dest=/k8s_cache_${kube_offline_version}.tgz"
 ansible all -m shell -a "rm -rf /k8s_cache"

@@ -75,7 +75,7 @@
 
   - name: systemctl 安装恢复
     include_tasks: systemctl.yml
-    when: startup != 'kubeadm'
+    when: startup_way != 'kubeadm'
 
   - name: 启动 kubelet
     systemd:

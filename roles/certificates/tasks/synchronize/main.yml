@@ -4,12 +4,14 @@
 
 - name: 分发 kubernetes 证书文件到各 kubernetes 集群节点
   when:
+    - install_way != 'command'
     - add_etcds_task is undefined
     - add_masters_task is undefined
   include_tasks: _kubecerts.yml
 
 - name: 分发 kubernetes kuber-config 文件到各 kubernetes 集群节点
   when:
+    - install_way != 'command'
     - add_etcds_task is undefined
     - inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)
   include_tasks: _kubeconfig.yml

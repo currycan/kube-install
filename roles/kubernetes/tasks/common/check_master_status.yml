@@ -28,7 +28,7 @@
 - name: 等待 Kubernetes 三大核心组件启动
   wait_for:
     host: >-
-      {%- if startup != 'kubeadm' -%}
+      {%- if startup_way != 'kubeadm' -%}
       {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
       {%- else -%}
       127.0.0.1

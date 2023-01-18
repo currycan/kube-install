@@ -32,7 +32,7 @@ ExecStart=/usr/bin/kube-apiserver \
   --enable-aggregator-routing=true \
   --enable-bootstrap-token-auth=true \
   --enable-swagger-ui=true \
-  --encryption-provider-config={{ k8s_pki_dir }}/secrets-encryption.yaml \
+  --encryption-provider-config={{ kubernetes_etc_dir }}/enc/secrets-encryption.yaml \
   --endpoint-reconciler-type=lease \
   --etcd-cafile={{ etcd_ca }} \
   --etcd-certfile={{ etcd_cert_apiserver_server }} \
@@ -67,7 +67,7 @@ ExecStart=/usr/bin/kube-apiserver \
   --tls-private-key-file={{ apiserver_cert_key }} \
   --tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256 \
 {% if enable_apiserver_token_auth_file | default(false) %}
-  --token-auth-file={{ k8s_pki_dir }}/token.csv \
+  --token-auth-file={{ kubernetes_etc_dir }}/token.csv \
 {% endif %}
   --v=2 \
   --watch-cache-sizes=node#100,pod#1000

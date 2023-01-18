@@ -13,10 +13,10 @@
     register: kubernetes_rpm_install
     failed_when: kubernetes_rpm_install.rc != 0 and "is already installed" not in kubernetes_rpm_install.stderr
     changed_when: kubernetes_rpm_install.rc == 0
-  when: install_way != 'binary'
+  when: setup_way != 'binary'
 
 - name: 二进制安装 kubernetes
-  when: install_way == 'binary'
+  when: setup_way == 'binary'
   copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -40,7 +40,7 @@
 - block:
   - name: 获取 bootstrap_token
     shell: >
-      cat "{{ k8s_pki_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1
+      cat "{{ kubernetes_etc_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1
     register: get_bootstrap_token
 
   - name: 设置 bootstrap_token 变量
@@ -65,11 +65,11 @@
     include_tasks:  common/init_worker.yml
 
   - name: kubeadm 方式启动 kubernetes 集群各组件
-    when: startup == 'kubeadm'
+    when: startup_way == 'kubeadm'
     include_tasks: kubeadm/main.yml
 
   - name: systemctl 方式启动 kubernetes 集群各组件
-    when: startup != 'kubeadm'
+    when: startup_way != 'kubeadm'
     include_tasks: binary/main.yml
 
   - block:

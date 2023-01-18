@@ -31,7 +31,7 @@
   - name: master 节点重新配置参数
     when:
       - "groups['delete_etcds']|length > 0"
-      - startup == 'kubeadm'
+      - startup_way == 'kubeadm'
     include_role:
       name: cluster-ops/delete/etcd
       tasks_from: "{{ inventory_dir }}/roles/cluster-ops/delete/etcd/tasks/update-k8s.yml"
