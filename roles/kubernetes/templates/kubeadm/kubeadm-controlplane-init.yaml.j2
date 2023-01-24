@@ -47,7 +47,7 @@ apiVersion: kubeadm.k8s.io/v1beta1
 kind: ClusterConfiguration
 kubernetesVersion: v{{ kube_version }}
 clusterName: {{ cluster_name }}
-controlPlaneEndpoint: "{{ kube_master_external_domain[0] }}:{%- if groups['kube_masters'] | length == 1 or lb_mode == 'kube-vip' or lb_mode == 'kube-lvscare' -%}6443{%- else -%}8443{%- endif %}"
+controlPlaneEndpoint: "{{ kube_master_external_domain.split(',')[0] }}:{%- if groups['kube_masters'] | length == 1 or lb_mode == 'kube-vip' or lb_mode == 'kube-lvscare' -%}6443{%- else -%}8443{%- endif %}"
 certificatesDir: {{ k8s_pki_dir }}
 {% if (kube_version is version('1.15.0', '>=')) and (not skip_coredns | bool) %}
 dns:
@@ -62,6 +62,9 @@ dns:
   imageTag: "{{ images.coredns.name.split(':')[1] }}"
 {% endif %}
 etcd:
+{% if etcd_local | bool %}
+  local:
+{% else %}
   external:
     endpoints:
 {% for host in ((groups['etcds'] | union(groups['add_etcds'])) | difference(groups['delete_etcds'])) %}
@@ -71,6 +74,7 @@ etcd:
     - https://{{ host }}:2379
 {% endif %}
 {% endfor %}
+{% endif %}
     caFile: {{ etcd_ca }}
     certFile: {{ etcd_cert_apiserver_server }}
     keyFile: {{ etcd_cert_apiserver_server_key }}
@@ -117,34 +121,6 @@ apiServer:
       hostPath: {{ volume.hostPath }}
       mountPath: {{ volume.mountPath }}
       readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
-{% endfor %}
-  certSANs:
-  - localhost
-  - kubernetes
-  - kubernetes.default
-  - kubernetes.default.svc
-{% for sub_domain in cluster_domain_name.split('.') %}
-  {%- set outer_loop = loop %}
-  - kubernetes.default.svc.{% for domain in cluster_domain_name.split('.') %}{% if loop.index <= outer_loop.index %}{{ domain }}{% if loop.index < outer_loop.index %}.{% endif %}{% endif %}{% endfor %}
-
-{% endfor %}
-{% for host in (groups['kube_masters']| default([])) | unique %}
-  - {{ hostvars[host]['ansible_hostname'] | lower }}
-{% endfor %}
-{% for domain in kube_master_external_domain %}
-  - {{ domain }}
-{% endfor %}
-  - 127.0.0.1
-  - 0:0:0:0:0:0:0:1
-  - {{ api_service_ip }}
-{% if lb_apiserver_ip is defined %}
-  - {{ lb_apiserver_ip }}
-{% endif %}
-{% for host in (groups['kube_masters'] | default([])) | unique %}
-  - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
-{% endfor %}
-{% for ip in kube_master_external_ip %}
-  - {{ ip }}
 {% endfor %}
 controllerManager:
   extraArgs:

@@ -1,4 +1,5 @@
 - name: 删除证书签名请求文件
+  no_log: true
   file:
     path: "{{ item.path }}"
     state: absent

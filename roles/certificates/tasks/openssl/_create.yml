@@ -1,9 +1,9 @@
-- name: 判断证书私钥是否存在
+- name: 判断证书是否存在
   stat:
-    path: "{{ item.dir }}/{{ item.name }}.key"
+    path: "{{ item.dir }}/{{ item.name }}.crt"
   with_items:
-    - "{{ certs }}"
-  register: check_cert_key_files
+    - "{{ openssl_certs }}"
+  register: check_cert_files
 
 - block:
   - name: 获取 kubernetes CA 证书
@@ -27,8 +27,8 @@
     no_log: true
     with_items: "{{ slurp_kubernetes_ca_certs.results }}"
   when:
-    - check_cert_key_files['results'][0].item.org is defined
-    - check_cert_key_files['results'][0].item.org == "system:nodes"
+    - check_cert_files['results'][0].item.org is defined
+    - check_cert_files['results'][0].item.org == "system:nodes"
 
 - name: 渲染证书签名请求文件
   template:
@@ -44,7 +44,7 @@
 - include_tasks: "_certs.yml"
   loop_control:
     loop_var: out_item
-  with_items: "{{ check_cert_key_files['results'] }}"
+  with_items: "{{ check_cert_files['results'] }}"
 
 - name: worker 节点删除 kubernetes CA 私钥
   file:
@@ -54,8 +54,8 @@
   when:
     - inventory_hostname in (groups['kube_nodes'] | difference(groups['delete_nodes']) | unique)
     - inventory_hostname not in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)
-    - check_cert_key_files['results'][0].item.org is defined
-    - check_cert_key_files['results'][0].item.org == "system:nodes"
+    - check_cert_files['results'][0].item.org is defined
+    - check_cert_files['results'][0].item.org == "system:nodes"
 - name: 获取待删除的证书临时文件
   find:
     paths: "{{ item }}"

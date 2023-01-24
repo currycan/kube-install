@@ -35,6 +35,7 @@
       - inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)
       - inventory_hostname != (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first)
   when:
+    - not etcd_local | bool
     - groups['kube_masters'] | difference(groups['delete_masters']) | unique | length > 1
     - add_etcds_task is undefined
     - add_masters_task is undefined
@@ -65,5 +66,6 @@
       - inventory_hostname in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)
       - inventory_hostname != (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique | first)
   when:
+    - not etcd_local | bool
     - add_etcds_task is defined
     - add_etcds_task | bool

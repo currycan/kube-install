@@ -14,4 +14,4 @@ proxy_registries:
   - "https://docker.mirrors.ustc.edu.cn"
 
 # insecure_registry_cidr:
-#   - "{{ vip_address.split('.')[:-1] | join('.') }}.0/24"
+#   - "{{ lb_apiserver_ip.split('.')[:-1] | join('.') }}.0/24"

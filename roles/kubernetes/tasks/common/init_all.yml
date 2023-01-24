@@ -48,7 +48,7 @@
       - { src: "kubelet/kubelet-pre-start.sh", dest: "/usr/bin/kubelet-pre-start.sh" }
 
   - name: 生成 {{ lb_mode }} static pod 配置文件
-    when: 'lb_mode == "kube-vip" or lb_mode == "kube-lvscare"'
+    when: item.lb == lb_mode
     template:
       src: "{{ item.src }}.j2"
       dest: "{{ item.dest }}"

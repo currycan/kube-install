@@ -111,13 +111,17 @@
   with_items:
     - "95-k8s-sysctl.conf"
 
-- name: 修改 net.ipv4.ip_forward 内核参数
+- name: 修改内核参数
   sysctl:
-    name: net.ipv4.ip_forward
-    value: '1'
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
     sysctl_set: yes
     state: present
     reload: yes
+  with_items:
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+    - { name: 'vm.swappiness', value: '0' }
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
 
 - name: 生效系统参数
   changed_when: true
@@ -151,23 +155,6 @@
     create: yes
     backup: yes
     marker: "# Ansible inventory hosts {mark}"
-
-- name: 添加 kube-apiserver 域名到 hosts 文件中
-  when:
-    - add_etcds_task is undefined
-    - add_masters_task is undefined
-    - add_nodes_task is undefined
-  blockinfile:
-    path: /etc/hosts
-    block: |-
-      {% for domain in kube_master_external_domain %}
-      {{ lb_apiserver_ip }} {{ domain }}
-      {% endfor %}
-    mode: 0644
-    state: present
-    create: yes
-    backup: yes
-    marker: "# Ansible kube-apiserver domain {mark}"
 
 - name: 确认 hosts 文件中 localhost ipv4 配置正确
   lineinfile:

@@ -1,10 +1,19 @@
-- name: 判断 {{ out_item.item.dir }}/{{ out_item.item.name }}.pem 证书是否存在
+- name: 判断 {{ out_item.item.dir }}/{{ out_item.item.name }} 证书是否存在
   stat:
-    path: "{{ out_item.item.dir }}/{{ out_item.item.name }}.pem"
+    path: "{{ out_item.item.dir }}/{{ out_item.item.name }}.{%- if cfssl_convert | bool -%}crt{% else%}pem{% endif %}"
   register: check_cert_pem_files
 
 - block:
   - name: 渲染 {{ out_item.item.dir }}/{{ out_item.item.csr }} 证书签名请求文件
+    when: out_item.item.kind == "ca"
+    template:
+      src: "{{ inventory_dir }}/roles/certificates/templates/cfssl/cert-csr-ca.json.j2"
+      dest: "{{ out_item.item.dir }}/{{ out_item.item.csr }}"
+      owner: root
+      mode: 0644
+
+  - name: 渲染 {{ out_item.item.dir }}/{{ out_item.item.csr }} 证书签名请求文件
+    when: out_item.item.kind != "ca"
     template:
       src: "{{ inventory_dir }}/roles/certificates/templates/cfssl/cert-csr.json.j2"
       dest: "{{ out_item.item.dir }}/{{ out_item.item.csr }}"
@@ -22,14 +31,14 @@
     shell: >-
       cfssl gencert \
         {% if 'etcd-ca' == out_item.item.parent_ca -%}
-        -ca={{ etcd_ca }} \
-        -ca-key={{ etcd_ca_key }} \
+        -ca={{ etcd_ca.split('.')[:-1] | join('.') }}.pem \
+        -ca-key={{ etcd_ca.split('.')[:-1] | join('.') }}-key.pem  \
         {% elif 'kubernetes-ca' == out_item.item.parent_ca -%}
-        -ca={{ kubernetes_ca }} \
-        -ca-key={{ kubernetes_ca_key }} \
+        -ca={{ kubernetes_ca.split('.')[:-1] | join('.') }}.pem  \
+        -ca-key={{ kubernetes_ca.split('.')[:-1] | join('.') }}-key.pem \
         {% elif 'kubernetes-front-proxy-ca' == out_item.item.parent_ca -%}
-        -ca={{ front_ca }} \
-        -ca-key={{ front_ca_key }} \
+        -ca={{ front_ca.split('.')[:-1] | join('.') }}.pem \
+        -ca-key={{ front_ca.split('.')[:-1] | join('.') }}-key.pem \
         {% endif -%}
         -config={{ cfssl_ca_config }} \
         {% if out_item.item.hosts is defined -%}

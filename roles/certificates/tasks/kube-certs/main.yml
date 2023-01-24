@@ -1,28 +1,28 @@
-- block:
-  - name: 安装 kube-certs
-    copy:
-      src: "{{ item.src }}"
-      dest: "{{ item.dest }}"
-      owner: root
-      group: root
-      mode: 0755
-    with_items:
-      - { src: "{{ cache_dir }}/binary/kube-certs", dest: "/usr/bin/"}
+- name: 安装 kube-certs
+  when: inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { src: "{{ cache_dir }}/binary/kube-certs", dest: "/usr/bin/"}
 
-  - name: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }} 节点生成证书和 kubeconfig 文件"
-    shell: >
-      rm -f {{ kubernetes_etc_dir }}/*.conf;
-      kube-certs certs \
-        --cert-path={{ k8s_pki_dir }} \
-        --cert-etcd-path={{ etcd_pki_dir }} \
-        --kube-config-path={{ kubernetes_etc_dir }} \
-        --node-ip={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
-        --node-name={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
-        --dns-domain={{ cluster_domain_name }} \
-        --service-cidr={{ service_subnet }} \
-        --control-plane-endpoint="https://{{ kube_master_external_domain[0] }}:{%- if groups['kube_masters'] | length == 1 or lb_mode == 'kube-vip' or lb_mode == 'kube-lvscare' -%}6443{%- else -%}8443{%- endif %}" \
-        --cluster-name="kubernetes" \
-        --apiserver-alt-names="{% for domain in kube_master_external_domain %}{{ domain }}{% endfor %}, {% for ip in kube_master_external_ip %}{{ ip }}{% if not loop.last %}, {% endif %}{% endfor %}, {% for host in (groups['kube_masters'] | difference(groups['delete_masters']) | unique) %}{{ hostvars[host]['ansible_' + iface].ipv4.address }}{% if loop %}, {% endif %}{{ hostvars[host]['ansible_hostname'] | lower }}{% if not loop.last %}, {% endif %}{% endfor %}, {{ lb_apiserver_ip }}" \
-        --etcd-alt-names="{{ etcd_domain_name }}, {% for host in (groups['kube_etcds'] | difference(groups['delete_etcds']) | unique) %}{{ hostvars[host]['ansible_' + iface].ipv4.address }}{% if loop %}, {% endif %} {{ hostvars[host]['ansible_hostname'] | lower }}{% if not loop.last %}, {% endif %}{% endfor %}, {{ lb_apiserver_ip }}"
+- name: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }} 节点生成证书和 kubeconfig 文件"
+  shell: >
+    rm -f {{ kubernetes_etc_dir }}/*.conf;
+    kube-certs certs \
+      --cert-path={{ k8s_pki_dir }} \
+      --cert-etcd-path={{ etcd_pki_dir }} \
+      --kube-config-path={{ kubernetes_etc_dir }} \
+      --node-ip={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
+      --node-name={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
+      --dns-domain={{ cluster_domain_name }} \
+      --service-cidr={{ service_subnet }} \
+      --control-plane-endpoint="{{ api_url }}" \
+      --cluster-name="{{ cluster_name }}" \
+      --apiserver-alt-names="{{ apiserver_hosts }}" \
+      --etcd-alt-names="{{ etcd_cert_hosts }}"
   run_once: true
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"

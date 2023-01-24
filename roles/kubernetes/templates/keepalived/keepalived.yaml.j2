@@ -15,7 +15,7 @@ spec:
     image: {{ images.keepalived.name }}
     env:
     - name: KEEPALIVED_VIRTUAL_IPS
-      value: {{ vip_address }}
+      value: {{ lb_apiserver_ip }}
     - name: KEEPALIVED_INTERFACE
       value: "{% if vip_interface != '' %}{{ vip_interface }}{% else %}{{ ansible_default_ipv4.interface }}{% endif %}"
     - name: KEEPALIVED_UNICAST_PEERS

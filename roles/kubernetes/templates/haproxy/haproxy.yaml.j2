@@ -11,7 +11,7 @@ spec:
   dnsPolicy: ClusterFirstWithHostNet
   priorityClassName: system-cluster-critical
   containers:
-  - name: lb-nginx
+  - name: lb-haproxy
     image: {{ images.haproxy.name }}
 {% if lb_healthcheck_port is defined %}
     livenessProbe:
@@ -39,6 +39,10 @@ spec:
     hostPath:
       path: "{{ lb_config_dir }}/haproxy.cfg"
       type: File
+  - name: haproxy-run
+    hostPath:
+      path: "/run/haproxy/"
+      type: DirectoryOrCreate
   - hostPath:
       path: /etc/localtime
       type: File

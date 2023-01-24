@@ -1,5 +1,7 @@
 - name: 分发 etcd 证书到各 etcd 集群节点
-  when: add_masters_task is undefined
+  when:
+  - etcd_local | bool
+  - add_etcds_task is undefined
   include_tasks: _etcd.yml
 
 - name: 分发 kubernetes 证书文件到各 kubernetes 集群节点
@@ -9,7 +11,7 @@
     - add_masters_task is undefined
   include_tasks: _kubecerts.yml
 
-- name: 分发 kubernetes kuber-config 文件到各 kubernetes 集群节点
+- name: 分发 kubernetes kube-config 文件到各 kubernetes 集群节点
   when:
     - install_way != 'command'
     - add_etcds_task is undefined

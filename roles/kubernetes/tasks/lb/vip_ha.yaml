@@ -1,0 +1,7 @@
+- block:
+  - name: 初始化 {{ lb_mode }} 配置
+    include_tasks: _common.yml
+  when:
+  - lb_mode == "kube-vip"
+  - groups['kube_masters'] | length > 1
+  - inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)

@@ -1,173 +1,67 @@
+- name: 获取当前 {{ lb_mode }} 服务运行状态
+  shell: >
+    lb_running_num=0;
+    lb_srvs='{{ lb_mode }} keepalived';
+    for lb in ${lb_srvs};
+    do
+      {% if container_runtime == 'docker' -%}
+      [ `docker ps --filter name=k8s_lb-${lb}.* --filter status=running | wc -l` -eq 2 ] && lb_running_num=`expr $lb_running_num + 1`;
+      {% elif container_runtime == 'containerd' -%}
+      [ `crictl ps --name=lb-${lb}.* --state running | wc -l` -eq 2 ] && lb_running_num=`expr $lb_running_num + 1`;
+      {%- endif -%}
+    done;
+    {% if lb_mode != "kube-vip" and lb_mode != "kube-lvscare" %}
+    if [ $lb_running_num -eq 2 ];then
+      lb_running=true
+    else
+      lb_running=false
+    fi;
+    {% else %}
+    if [ $lb_running_num -eq 1 ];then
+      lb_running=true
+    else
+      lb_running=false
+    fi;
+    {% endif %}
+    echo $lb_running
+  register: lb_running
+
 - block:
-  - name: 获取当前 lb 服务运行状态
-    shell: >
-      lb_running_num=0;
-      for lb in {"{{ lb_mode }}","keepalived"};
-      do
-        {% if container_runtime == 'docker' -%}
-        [ `docker ps --filter name=k8s_lb-${lb}.* --filter status=running | wc -l` -eq 2 ] && lb_running_num=`expr $lb_running_num + 1`;
-        {% elif container_runtime == 'containerd' -%}
-        [ `crictl ps --name=lb-${lb}.* --state running | wc -l` -eq 2 ] && lb_running_num=`expr $lb_running_num + 1`;
-        {%- endif -%}
-      done;
-      echo $lb_running_num
-    register: lb_status_result
+  - name: 安装 kube-lvscare
+    when:
+    - lb_mode == "kube-lvscare"
+    - "inventory_hostname in (groups['kube_cluster'] | difference(groups['delete_masters']) | difference(groups['delete_nodes']) | unique)"
+    include_tasks: lvscare_ha.yaml
 
-  - block:
-    - name: 创建 load-balancer 配置文件目录
-      file:
-        name: "{{ item }}"
-        state: directory
-        mode: 0644
-      with_items:
-        - "{{ manifest_dir }}"
-        - "{{ lb_config_dir }}"
-        - "{{ systemd_service_dir }}/kubelet.service.d"
-        - "{{ kubelet_data_dir }}"
+  - name: 安装 kube-vip
+    when:
+    - lb_mode == "kube-vip"
+    - inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)
+    include_tasks: vip_ha.yaml
 
-    - name: 确认没有运行其他负载均衡器
-      when: lb_mode == "slb" or lb_mode == "kube-vip" or lb_mode == "kube-lvscare"
-      file:
-        name: "{{ item }}"
-        state: absent
-      with_items:
-      - "{{ lb_config_dir }}"
-      - "{{ manifest_dir }}/lb-keepalived.yaml"
-      - "{{ manifest_dir }}lb-kube-apiserver.yaml"
+  - name: 安装 keepalived 和 {{ lb_mode }}
+    when:
+    - lb_mode != "kube-vip"
+    - lb_mode != "kube-lvscare"
+    - inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']) | unique)
+    include_tasks: keepalived_ha.yaml
 
-    - name: 生成 {{ lb_mode }} static pod 配置文件
-      when: '(item.lb == lb_mode) or (item.lb == "keepalived" and lb_mode != "kube-vip" and lb_mode != "kube-lvscare")'
-      template:
-        src: "{{ item.src }}.j2"
-        dest: "{{ item.dest }}"
-        owner: "root"
-        group: "root"
-        mode: "0644"
-      with_items:
-        # keepalived
-        - { src: "keepalived/keepalived.yaml", dest: "{{ manifest_dir }}/keepalived.yaml", lb: "keepalived"}
-        # envoy
-        - { src: "envoy/envoy.conf.yaml", dest: "{{ lb_config_dir }}/envoy.yaml", lb: "envoy" }
-        - { src: "envoy/envoy.yaml", dest: "{{ manifest_dir }}/lb-envoy.yaml", lb: "envoy" }
-        # haproxy
-        - { src: "haproxy/haproxy.cfg", dest: "{{ lb_config_dir }}/haproxy.cfg", lb: "haproxy" }
-        - { src: "haproxy/haproxy.yaml", dest: "{{ manifest_dir }}/lb-haproxy.yaml", lb: "haproxy" }
-        # nginx
-        - { src: "nginx/nginx.conf", dest: "{{ lb_config_dir }}/nginx.conf", lb: "nginx" }
-        - { src: "nginx/nginx.yaml", dest: "{{ manifest_dir }}/lb-nginx.yaml", lb: "nginx" }
-        # openresty
-        - { src: "nginx/nginx.conf", dest: "{{ lb_config_dir }}/nginx.conf", lb: "openresty" }
-        - { src: "openresty/openresty.yaml", dest: "{{ manifest_dir }}/lb-openresty.yaml", lb: "openresty" }
-        # kube-vip
-        - { src: "kube-vip/lb-kube-vip.yaml", dest: "{{ manifest_dir }}/lb-kube-vip.yaml", lb: "kube-vip" }
-        # kube-lvscare
-        - { src: "kube-lvscare/lb-kube-lvscare.yaml", dest: "{{ manifest_dir }}/lb-kube-lvscare.yaml", lb: "kube-lvscare" }
+  - name: 停止 kubelet
+    when: lb_mode != "kube-vip"
+    systemd:
+      name: kubelet
+      daemon_reload: yes
+      state: stopped
+      enabled: yes
 
-    - name: 渲染临时 kubelet 启动文件
-      template:
-        src: "{{ item.src }}.j2"
-        dest: "{{ item.dest }}"
-        owner: "root"
-        group: "root"
-        mode: "0644"
-      with_items:
-        - { src: "kubelet/00-kubelet-override.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf" }
-        - { src: "kubelet/kubelet-override-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
-        - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }
-
-    - name: 配置 kubelet-pre-start.sh
-      template:
-        src: "{{ item.src }}.j2"
-        dest: "{{ item.dest }}"
-        owner: root
-        group: root
-        mode: 0755
-      with_items:
-        - { src: "kubelet/kubelet-pre-start.sh", dest: "/usr/bin/kubelet-pre-start.sh" }
-
-    - name: bootstrap lb 服务
-      systemd:
-        name: kubelet
-        daemon_reload: yes
-        state: restarted
-        enabled: yes
-      register: started_kubelet
-      until: started_kubelet is succeeded
-      retries: 3
-      delay: "{{ retry_stagger }}"
-
-    - name: 清除虚拟网卡
-      when: lb_mode == "kube-lvscare"
-      shell: "{{ item }} || true"
-      with_items:
-      - ip link del lvscare
-      - crictl rm -f $(crictl ps --name=lb-${lb}.* -qa)
-
-    - name: 重启网络
-      when: lb_mode == "kube-vip" or lb_mode == "kube-lvscare"
-      systemd:
-        name: >-
-          {% if ansible_os_family == "RedHat" -%}
-          {%- if ansible_distribution_major_version|int == 8 -%}
-          NetworkManager
-          {%- else -%}
-          network
-          {%- endif -%}
-          {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release == "bionic" -%}
-          systemd-networkd
-          {%- elif ansible_os_family == "Debian" -%}
-          networking
-          {%- endif %}
-        state: restarted
-
-    # - name: 以轮询的方式等待 {{ lb_mode }} 运行完成
-    #   when: lb_mode == "kube-vip" or lb_mode == "kube-lvscare"
-    #   shell: >
-    #     ip a | grep {{ lb_apiserver_ip }}
-    #   register: lb_status
-    #   until: lb_status.rc == 0
-    #   retries: 8
-    #   delay: 15
-
-    - name: 以轮询的方式等待 {{ lb_mode }} 运行完成
-      when:
-      - lb_mode != "kube-vip"
-      - lb_mode != "kube-lvscare"
-      shell: >
-        nc -z -w 3 127.0.0.1 {{ lb_secure_port }};
-      register: lb_status
-      until: lb_status.rc == 0
-      retries: 8
-      delay: 15
-
-    - name: 以轮询的方式等待 keepalived 运行完成
-      when:
-      - lb_mode != "kube-vip"
-      - lb_mode != "kube-lvscare"
-      shell: >
-        nc -z -w 3 {{ lb_apiserver_ip | trim }} {{ lb_secure_port }};
-      register: keepalived_status
-      until: keepalived_status.rc == 0
-      retries: 5
-      delay: 15
-
-    - name: 停止 kubelet
-      systemd:
-        name: kubelet
-        daemon_reload: yes
-        state: stopped
-        enabled: yes
-
-    - name: 移除 kubelet 临时配置文件
-      file:
-        name: "{{ item }}"
-        state: absent
-      with_items:
-        - "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf"
-        - "{{ kubelet_data_dir }}/config.yaml"
-        - "{{ kubelet_data_dir }}/cpu_manager_state"
-        - "{{ kubelet_data_dir }}/memory_manager_state"
-    when: 'lb_status_result.stdout != "2"'
-  when:
-  - groups['kube_masters'] | length > 1
-  - inventory_hostname in groups['kube_masters']
+  - name: 移除 kubelet 临时配置文件
+    when: lb_mode != "kube-vip"
+    file:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf"
+      - "{{ kubelet_data_dir }}/config.yaml"
+      - "{{ kubelet_data_dir }}/cpu_manager_state"
+      - "{{ kubelet_data_dir }}/memory_manager_state"
+  when: not lb_running.stdout | bool

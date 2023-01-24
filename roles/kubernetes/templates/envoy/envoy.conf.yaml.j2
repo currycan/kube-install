@@ -24,7 +24,7 @@ static_resources:
             - name: envoy.file_access_log
               config:
                 path: "/dev/stdout"
-{% if enabel_ingress_nodeport_lb | bool %}
+{% if enabel_ingress_nodeport_lb | default(true) | bool %}
   - name: ingress_http
     address:
       socket_address:
@@ -41,7 +41,7 @@ static_resources:
               config:
                 path: "/dev/stdout"
 {% endif %}
-{% if enabel_ingress_nodeport_lb | bool %}
+{% if enabel_ingress_nodeport_lb | default(true) | bool %}
   - name: ingress_https
     address:
       socket_address:

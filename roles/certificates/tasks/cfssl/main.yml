@@ -11,7 +11,7 @@
 - block:
   - name: 配置 kubernetes cluster 证书相关参数
     set_fact:
-      certs: "{{ cluster_certs }}"
+      cfssl_certs: "{{ cluster_certs }}"
 
   - name: 创建 kubernetes cluster 相关证书
     include_tasks: "_create.yml"
@@ -24,7 +24,7 @@
 - block:
   - name: etcd 新增节点配置证书相关参数
     set_fact:
-      certs: "{{ add_etcd_certs }}"
+      cfssl_certs: "{{ add_etcd_certs }}"
 
   - name: etcd 新增节点创建相关证书
     include_tasks: "_create.yml"
@@ -37,7 +37,7 @@
 - block:
   - name: kubernetes master 新增节点证书配置相关参数
     set_fact:
-      certs: "{{ add_master_certs }}"
+      cfssl_certs: "{{ add_master_certs }}"
 
   - name: kubernetes master 新增节点创建相关证书
     include_tasks: "_create.yml"
@@ -46,3 +46,22 @@
     - add_masters_task | bool
   run_once: true
   delegate_to: "{{ groups['add_masters'] | difference(groups['delete_masters']) | unique | first  }}"
+
+- block:
+  - name: 获取所有 cfssl 生成证书和私钥文件
+    find:
+      paths: "{{ item }}"
+      patterns: "*.pem"
+      # use_regex: true
+    with_items:
+      - "{{ k8s_pki_dir }}"
+      - "{{ etcd_pki_dir }}"
+    register: find_pem_to_crt
+
+  - name: 开始由 pem 转 crt...
+    include_tasks: "_convert.yml"
+    # no_log: true
+    loop_control:
+      loop_var: out_item
+    with_items: "{{ find_pem_to_crt['results'] }}"
+  when: cfssl_convert | bool

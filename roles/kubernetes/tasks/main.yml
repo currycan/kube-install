@@ -1,41 +1,41 @@
-- block:
-  - name: debug
-    debug:
-      msg: "安装 kubernetes, 可能需要一定时间。。"
-    run_once: true
+# - block:
+#   - name: debug
+#     debug:
+#       msg: "安装 kubernetes, 可能需要一定时间。。"
+#     run_once: true
 
-  - name: 离线安装 kubernetes
-    command: >-
-      rpm -Uvh --nodeps --force *.rpm
-    args:
-      warn: false
-      chdir: "{{ cache_dir }}/kubernetes"
-    register: kubernetes_rpm_install
-    failed_when: kubernetes_rpm_install.rc != 0 and "is already installed" not in kubernetes_rpm_install.stderr
-    changed_when: kubernetes_rpm_install.rc == 0
-  when: setup_way != 'binary'
+#   - name: 离线安装 kubernetes
+#     command: >-
+#       rpm -Uvh --nodeps --force *.rpm
+#     args:
+#       warn: false
+#       chdir: "{{ cache_dir }}/kubernetes"
+#     register: kubernetes_rpm_install
+#     failed_when: kubernetes_rpm_install.rc != 0 and "is already installed" not in kubernetes_rpm_install.stderr
+#     changed_when: kubernetes_rpm_install.rc == 0
+#   when: setup_way != 'binary'
 
-- name: 二进制安装 kubernetes
-  when: setup_way == 'binary'
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    owner: root
-    group: root
-    mode: 0755
-  with_items:
-    - { src: "{{ cache_dir }}/binary/kubernetes/", dest: "/usr/bin/"}
+# - name: 二进制安装 kubernetes
+#   when: setup_way == 'binary'
+#   copy:
+#     src: "{{ item.src }}"
+#     dest: "{{ item.dest }}"
+#     owner: root
+#     group: root
+#     mode: 0755
+#   with_items:
+#     - { src: "{{ cache_dir }}/binary/kubernetes/", dest: "/usr/bin/"}
 
-- name: 安装 helm
-  when: inventory_hostname in groups['kube_masters']
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    owner: root
-    group: root
-    mode: 0755
-  with_items:
-    - { src: "{{ cache_dir }}/binary/helm/", dest: "/usr/bin/"}
+# - name: 安装 helm
+#   when: inventory_hostname in groups['kube_masters']
+#   copy:
+#     src: "{{ item.src }}"
+#     dest: "{{ item.dest }}"
+#     owner: root
+#     group: root
+#     mode: 0755
+#   with_items:
+#     - { src: "{{ cache_dir }}/binary/helm/", dest: "/usr/bin/"}
 
 - block:
   - name: 获取 bootstrap_token
@@ -50,7 +50,7 @@
   delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
 - block:
-  - name: 安装集群 lb 服务
+  - name: 配置集群高可用
     when: add_nodes_task is undefined
     include_tasks: lb/main.yml
 
@@ -171,7 +171,6 @@
     when: inventory_hostname in groups['kube_masters']
     shell: >
       {% if groups['kube_masters'] | length > 1 -%}
-        kubectl cordon {{ inventory_hostname }};
         kubectl taint node {{ inventory_hostname }} node-role.kubernetes.io/master=true:NoSchedule --overwrite;
       {%- endif -%}
       kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master='' --overwrite;

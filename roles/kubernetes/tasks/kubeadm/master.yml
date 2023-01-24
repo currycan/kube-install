@@ -1,7 +1,6 @@
 - block:
   - name: 获取第一个 master 节点各组件状态
-    when:
-      - inventory_hostname == groups['kube_masters'] | difference(groups['delete_masters']) | unique | first
+    when: inventory_hostname == groups['kube_masters'] | difference(groups['delete_masters']) | unique | first
     shell: >
       cs_running_num=0;
       for cs in {kube-apiserver,kube-controller-manager,kube-scheduler};
@@ -25,7 +24,6 @@
         rm -f {{ kubelet_data_dir }}/cpu_manager_state;
         rm -f {{ kubelet_data_dir }}/memory_manager_state;
         rm -f {{ manifest_dir }}/kube-*;
-        crictl rm -f $(crictl ps --name=kube-.* -qa);
         kubeadm init \
           {% if skip_kube_proxy | bool -%}
           --skip-phases=addon/kube-proxy \
@@ -33,15 +31,12 @@
           {% if skip_coredns | bool -%}
           --skip-phases=addon/coredns \
           {% endif -%}
+          --ignore-preflight-errors=ImagePull \
           --config={{ kubernetes_etc_dir }}/kubeadm-config.yaml --upload-certs --v=5
       register: init_rslt
       # until: init_rslt.rc == 0
       # retries: 3
       delay: "{{ retry_stagger | random + 2 }}"
-      ignore_errors: true
-
-    - name: kubeadm 初始化时输出结果写入文本
-      action: copy content="{{ init_rslt.stdout }}" dest="{{ kubernetes_etc_dir }}/kubeadm_init.stdout"
 
     - name: 校验初始化第一个 master 节点是否成功
       assert:
@@ -50,6 +45,18 @@
 
     - include_tasks: common/check_master_status.yml
 
+    - name: 确认 kube-vip 启动完成, 虚拟 IP 创建成功
+      when: lb_mode == "kube-vip"
+      # kubectl get po -n kube-system | grep kube-vip | cut -d' ' -f1 | xargs kubectl delete po -n kube-system;
+      # systemctl restart kubelet;
+      shell: >
+        nc -z -w 3 {{ lb_apiserver_ip | trim }} {{ lb_secure_port }};
+      # environment:
+      #   KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
+      register: lb_status
+      until: lb_status.rc == 0
+      retries: 8
+      delay: 15
     when: 'cs_statuses_result.stdout is defined and cs_statuses_result.stdout != "3"'
     run_once: true
     delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
@@ -64,8 +71,9 @@
 
   # # 由于 etcd 是二进制安装，因此需要加上配置： --config kubeadm-config.yaml
   - name: 生成 master 节点 join token
+    when: install_way == 'command'
     shell: >
-      echo $(kubeadm token create --print-join-command --ttl=15m) --certificate-key $(kubeadm init phase upload-certs --upload-certs --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml | sed -n '3p') | sed "s#{{ kube_master_external_domain[0] }}#{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}#"
+      echo $(kubeadm token create --print-join-command --ttl=15m) --certificate-key $(kubeadm init phase upload-certs --upload-certs --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml | sed -n '3p') | sed "s#{{ kube_master_external_domain.split(',')[0] }}#{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}#"
     environment:
       KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
     run_once: true
@@ -73,37 +81,39 @@
     register: master_kubeadm_join_cmd
 
   - name: 生成 kubeadm join 命令
+    when: install_way == 'command'
     set_fact:
       kubeadm_join: "{{ master_kubeadm_join_cmd.stdout }}"
 
   - block:
     # - debug: msg="其他 master 节点加入集群，可能需要一定时间。。"
-    # - name: 其他 master 节点加入集群
-    #   shell: >
-    #     timeout -k 240s 240s;
-    #     systemctl stop kubelet.service;
-    #     rm -f {{ kubelet_data_dir }}/cpu_manager_state;
-    #     rm -f {{ kubelet_data_dir }}/memory_manager_state;
-    #     rm -f {{ manifest_dir }}/kube-*;
-    #     kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml --v=5
-    #   register: master_join_rslt
-    #   ignore_errors: true
-
-    - debug: var=kubeadm_join
-    - debug: msg="其他 master 节点加入集群，可能需要一定时间。。"
     - name: 其他 master 节点加入集群
+      when: install_way != 'command'
       shell: >
         timeout -k 240s 240s;
-        {{ kubeadm_join }} --control-plane \
-          --node-name={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
+        systemctl stop kubelet.service;
+        rm -f {{ kubelet_data_dir }}/cpu_manager_state;
+        rm -f {{ kubelet_data_dir }}/memory_manager_state;
+        rm -f {{ manifest_dir }}/kube-*;
+        kubeadm join --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml \
+          --ignore-preflight-errors=all \
           --v=5
       register: master_join_rslt
       ignore_errors: true
 
+    - debug: var=kubeadm_join
+      when: install_way == 'command'
     # master使用kubeadm升级1.18之后 遇到新的node不能添加问题,https://github.com/kubernetes/website/pull/19868/files
     # kubeadm init phase bootstrap-token
-    - name: master 节点 kubeadm join 输出结果写入文本
-      action: copy content="{{ master_join_rslt.stdout }}" dest="{{ kubernetes_etc_dir }}/master_kubeadm_join_rslt.stdout"
+    - name: 其他 master 节点加入集群
+      when: install_way == 'command'
+      shell: >
+        timeout -k 240s 240s;
+        {{ kubeadm_join }} --control-plane \
+          --node-name={{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }} \
+          --ignore-preflight-errors=all \
+          --v=5
+      register: master_join_rslt
 
     - name: 校验 master 节点加入集群是否成功
       assert:

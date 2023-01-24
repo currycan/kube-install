@@ -1,0 +1,84 @@
+- name: 添加 kube-apiserver 域名到 hosts 文件中
+  blockinfile:
+    path: /etc/hosts
+    block: |-
+      {% for domain in kube_master_external_domain.split(',') %}
+      {{ lb_apiserver_ip }} {{ domain | trim }}
+      {% endfor %}
+    mode: 0644
+    state: present
+    create: yes
+    backup: yes
+    marker: "# Ansible kube-apiserver domain {mark}"
+
+- name: 创建 {{ lb_mode }} 依赖目录
+  file:
+    name: "{{ item }}"
+    state: directory
+    mode: 0644
+  with_items:
+    - "{{ manifest_dir }}"
+    - "{{ lb_config_dir }}"
+    - "{{ systemd_service_dir }}/kubelet.service.d"
+    - "{{ kubelet_data_dir }}"
+
+- name: 确认没有运行其他负载均衡器
+  when: lb_mode == "slb" or lb_mode == "kube-vip" or lb_mode == "kube-lvscare"
+  file:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+  - "{{ lb_config_dir }}"
+  - "{{ manifest_dir }}/lb-keepalived.yaml"
+  - "{{ manifest_dir }}lb-kube-apiserver.yaml"
+
+- name: 生成 {{ lb_mode }} static pod 配置文件
+  when: '(item.lb == lb_mode) or (item.lb == "keepalived" and lb_mode != "kube-vip" and lb_mode != "kube-lvscare")'
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_items:
+    # keepalived
+    - { src: "keepalived/keepalived.yaml", dest: "{{ manifest_dir }}/keepalived.yaml", lb: "keepalived"}
+    # envoy
+    - { src: "envoy/envoy.conf.yaml", dest: "{{ lb_config_dir }}/envoy.yaml", lb: "envoy" }
+    - { src: "envoy/envoy.yaml", dest: "{{ manifest_dir }}/lb-envoy.yaml", lb: "envoy" }
+    # haproxy
+    - { src: "haproxy/haproxy.cfg", dest: "{{ lb_config_dir }}/haproxy.cfg", lb: "haproxy" }
+    - { src: "haproxy/haproxy.yaml", dest: "{{ manifest_dir }}/lb-haproxy.yaml", lb: "haproxy" }
+    # nginx
+    - { src: "nginx/nginx.conf", dest: "{{ lb_config_dir }}/nginx.conf", lb: "nginx" }
+    - { src: "nginx/nginx.yaml", dest: "{{ manifest_dir }}/lb-nginx.yaml", lb: "nginx" }
+    # openresty
+    - { src: "nginx/nginx.conf", dest: "{{ lb_config_dir }}/nginx.conf", lb: "openresty" }
+    - { src: "openresty/openresty.yaml", dest: "{{ manifest_dir }}/lb-openresty.yaml", lb: "openresty" }
+    # kube-vip
+    - { src: "kube-vip/lb-kube-vip.yaml", dest: "{{ manifest_dir }}/lb-kube-vip.yaml", lb: "kube-vip" }
+    # kube-lvscare
+    - { src: "kube-lvscare/lb-kube-lvscare.yaml", dest: "{{ manifest_dir }}/lb-kube-lvscare.yaml", lb: "kube-lvscare" }
+
+- name: 配置 kubelet-pre-start.sh
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { src: "kubelet/kubelet-pre-start.sh", dest: "/usr/bin/kubelet-pre-start.sh" }
+
+- name: 渲染临时 kubelet 启动文件
+  when: lb_mode != "kube-vip"
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ item.dest }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_items:
+    - { src: "kubelet/00-kubelet-override.conf", dest: "{{ systemd_service_dir }}/kubelet.service.d/00-kubelet-override.conf" }
+    - { src: "kubelet/kubelet-override-config.yml", dest: "{{ kubelet_data_dir }}/config.yaml" }
+    - { src: "kubelet/kubelet.service", dest: "{{ systemd_service_dir }}/kubelet.service" }

@@ -13,7 +13,7 @@ localAPIEndpoint:
 nodeRegistration:
   kubeletExtraArgs:
     hostname-override: {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
-  name: {{ inventory_hostname }}
+  name: {{ hostvars[inventory_hostname].ansible_hostname | lower }}
 ---
 {% if (kube_version is version('1.22.0', '>=')) %}
 apiVersion: kubeadm.k8s.io/v1beta3
@@ -32,18 +32,18 @@ etcd:
     serverCertSANs:
     - localhost
     - 127.0.0.1
-    - 0:0:0:0:0:0:0:1
 {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
     - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
 {% endfor %}
     peerCertSANs:
     - localhost
-    - {{ etcd_domain_name }}
+{% for domain in etcd_domain_name.split(',') %}
+    - {{ domain | trim }}
+{% endfor %}
 {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
     - {{ hostvars[host].ansible_hostname | lower }}
 {% endfor %}
     - 127.0.0.1
-    - 0:0:0:0:0:0:0:1
 {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
     - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
 {% endfor %}
@@ -61,11 +61,10 @@ apiServer:
 {% for host in (groups['kube_masters']| default([])) | unique %}
   - {{ hostvars[host]['ansible_hostname'] | lower }}
 {% endfor %}
-{% for domain in kube_master_external_domain %}
-  - {{ domain }}
+{% for domain in kube_master_external_domain.split(',') %}
+  - {{ domain | trim }}
 {% endfor %}
   - 127.0.0.1
-  - 0:0:0:0:0:0:0:1
   - {{ api_service_ip }}
 {% if lb_apiserver_ip is defined %}
   - {{ lb_apiserver_ip }}
@@ -73,6 +72,10 @@ apiServer:
 {% for host in (groups['kube_masters'] | default([])) | unique %}
   - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
 {% endfor %}
-{% for ip in kube_master_external_ip %}
-  - {{ ip }}
+{% for ip in kube_master_external_ip.split(',') %}
+  - {{ ip | trim }}
 {% endfor %}
+networking:
+  serviceSubnet: "{{ service_subnet }}"
+  podSubnet: "{{ pod_network_cidr }}"
+  dnsDomain: "{{ cluster_domain_name }}"

@@ -33,7 +33,7 @@ spec:
     - name: vip_retryperiod
       value: "1"
     - name: vip_address
-      value: "{{ vip_address }}"
+      value: "{{ lb_apiserver_ip }}"
     - name: prometheus_server
       value: :2112
     image: "{{ images.kube_vip.name }}"

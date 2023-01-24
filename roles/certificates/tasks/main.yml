@@ -30,6 +30,13 @@
   when: certs_way == 'kubeadm'
   include_tasks: kubeadm/main.yml
 
+- name: 确认 cfssl 创建证书，仅支持二进制安装，不支持 kubeadm 安装
+  when: startup_way == 'cfssl'
+  run_once: true
+  assert:
+    that: setup_way != 'kubeadm'
+    msg: "cfssl 创建证书，仅支持二进制安装，不支持 kubeadm 安装!"
+
 - name: cfssl 生成证书，仅支持 systemctl 安装方式
   when: certs_way == 'cfssl'
   include_tasks: cfssl/main.yml

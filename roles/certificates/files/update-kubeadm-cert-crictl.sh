@@ -247,7 +247,8 @@ cert::update_etcd_cert() {
   done
 
   # restart etcd
-  docker ps | awk '/k8s_etcd/{print$1}' | xargs -r -I '{}' docker restart {} >/dev/null 2>&1 || true
+  #docker ps | awk '/k8s_etcd/{print$1}' | xargs -r -I '{}' docker restart {} >/dev/null 2>&1 || true
+  crictl ps | awk '/etcd-/{print$(NF-1)}' |xargs -r -I '{}' crictl stopp {} >/dev/null 2>&1 || true
   log::info "restarted etcd"
 }
 
@@ -311,7 +312,8 @@ cert::update_master_cert() {
 
   # restart apiserver, controller-manager, scheduler and kubelet
   for item in "apiserver" "controller-manager" "scheduler"; do
-    docker ps | awk '/k8s_kube-'${item}'/{print$1}' | xargs -r -I '{}' docker restart {} >/dev/null 2>&1 || true
+    #docker ps | awk '/k8s_kube-'${item}'/{print$1}' | xargs -r -I '{}' docker restart {} >/dev/null 2>&1 || true
+    crictl ps | awk '/kube-'${item}'-/{print $(NF-1)}' | xargs -r -I '{}' crictl stopp {} >/dev/null 2>&1 || true
     log::info "restarted ${item}"
   done
   systemctl restart kubelet || true

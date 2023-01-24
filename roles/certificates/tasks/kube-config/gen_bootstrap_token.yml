@@ -13,7 +13,6 @@
     - name: 生成 bootstrap_token_id
       set_fact:
         bootstrap_token_id: "{{ lookup('password', '/dev/null length=6 chars=digits,ascii_letters,digits') | lower }}"
-
     - name: 生成 bootstrap_token_secret
       set_fact:
         bootstrap_token_secret: "{{ lookup('password', '/dev/null length=16 chars=digits,ascii_letters,digits') | lower }}"

@@ -3,10 +3,6 @@
 kube_image_repository: registry.cn-hangzhou.aliyuncs.com/google_containers
 # kube_image_repository: registry.aliyuncs.com/k8sxio
 # k8s 集群 master 节点证书配置，可以添加多个ip和域名（比如增加公网ip和域名）
-kube_master_external_ip:
-  - "8.8.8.8"
-kube_master_external_domain:
-  - "apiserver.k8s.local"
 
 # kubelet 参数
 kubelet_max_pods: 128

@@ -33,7 +33,16 @@
 
 - block:
   - name: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }} 节点生成证书和 kubeconfig 文件"
+    #   kubeadm init phase certs all \
+    #     --cert-dir={{ k8s_pki_dir }} \
+    #     --apiserver-advertise-address={{ api_address.split(':')[0] }} \
+    #     --apiserver-cert-extra-sans={{ apiserver_hosts }},{{ local_hosts }} \
+    #     --service-dns-domain={{ cluster_domain_name }} \
+    #     --control-plane-endpoint={{ api_address }} \
+    #     --service-dns-domain={{ cluster_domain_name }} \
+    #     --service-cidr={{ service_subnet }};
     shell: >
+      rm -f {{ kubernetes_etc_dir }}/*.conf;
       kubeadm init phase certs all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml;
       kubeadm init phase kubeconfig all --config={{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml
 

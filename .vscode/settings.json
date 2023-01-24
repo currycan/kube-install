@@ -4,6 +4,7 @@
         "editor.defaultFormatter": "Tim-Koehler.helm-intellisense"
     },
     "files.associations": {
+        "./**/*.yml": "ansible",
         "*.yaml": "yaml",
         "*.yml": "ansible"
     }

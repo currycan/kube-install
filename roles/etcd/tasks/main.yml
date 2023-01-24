@@ -1,69 +1,71 @@
 # 3.4.10开始是必须0700权限,https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.4.md#breaking-changes
-- name: 创建 etcd 数据目录
-  file:
-    name: "{{ item }}"
-    state: directory
-    mode: u=rwx,g-rwx,o-rwx
-  with_items:
-    - "{{ etcd_data_dir }}"
-    - "{{ etcd_wal_dir }}"
+- block:
+  - name: 创建 etcd 数据目录
+    file:
+      name: "{{ item }}"
+      state: directory
+      mode: u=rwx,g-rwx,o-rwx
+    with_items:
+      - "{{ etcd_data_dir }}"
+      - "{{ etcd_wal_dir }}"
 
-- name: 创建 etcd 安装config目录和数据备份目录
-  file:
-    path: "{{ item }}"
-    state: directory
-    recurse: yes
-  with_items:
-    - "{{ etcd_config_dir }}"
-    - "{{ etcd_data_bak_dir }}"
+  - name: 创建 etcd 安装config目录和数据备份目录
+    file:
+      path: "{{ item }}"
+      state: directory
+      recurse: yes
+    with_items:
+      - "{{ etcd_config_dir }}"
+      - "{{ etcd_data_bak_dir }}"
 
-- name: 安装 etcd
-  copy:
-    src: "{{ cache_dir }}/binary/etcd/"
-    dest: "/usr/bin/"
-    owner: root
-    group: root
-    mode: 0755
+  - name: 安装 etcd
+    copy:
+      src: "{{ cache_dir }}/binary/etcd/"
+      dest: "/usr/bin/"
+      owner: root
+      group: root
+      mode: 0755
 
-- name: 配置 etcd
-  template:
-    src: "{{ inventory_dir }}/roles/etcd/templates/{{ item.src }}.j2"
-    dest: "{{ item.dest }}"
-    mode: "{{ item.mode }}"
-    owner: root
-    group: root
-  with_items:
-    - { src: "etcd-config.yml", dest: "{{ etcd_config_dir }}/config.yml", mode: 0644 }
-    - { src: "etcd.service", dest: "{{ systemd_service_dir }}/etcd.service", mode: 0644 }
-    - { src: "etcd.sh", dest: "{{ profile_dir }}/etcd.sh", mode: "u=rwx"}
-    - { src: "etcd_cron.sh", dest: "/usr/local/bin/etcd_cron.sh", mode: "u=rwx,g=rx,o=x" }
+  - name: 配置 etcd
+    template:
+      src: "{{ inventory_dir }}/roles/etcd/templates/{{ item.src }}.j2"
+      dest: "{{ item.dest }}"
+      mode: "{{ item.mode }}"
+      owner: root
+      group: root
+    with_items:
+      - { src: "etcd-config.yml", dest: "{{ etcd_config_dir }}/config.yml", mode: 0644 }
+      - { src: "etcd.service", dest: "{{ systemd_service_dir }}/etcd.service", mode: 0644 }
+      - { src: "etcd.sh", dest: "{{ profile_dir }}/etcd.sh", mode: "u=rwx"}
+      - { src: "etcd_cron.sh", dest: "/usr/local/bin/etcd_cron.sh", mode: "u=rwx,g=rx,o=x" }
 
-- name: 设置 etcd 数据备份，每天凌晨3点备份
-  cron:
-    name: "create etcd data backup"
-    minute: "0"
-    hour: "3"
-    job: "/usr/local/bin/etcd_cron.sh -c 4 -d {{ etcd_data_bak_dir }} &>/dev/null 2>&1"
+  - name: 设置 etcd 数据备份，每天凌晨3点备份
+    cron:
+      name: "create etcd data backup"
+      minute: "0"
+      hour: "3"
+      job: "/usr/local/bin/etcd_cron.sh -c 4 -d {{ etcd_data_bak_dir }} &>/dev/null 2>&1"
 
-- name: 启动服务，并设置开机启动
-  systemd:
-    name: etcd
-    daemon_reload: yes
-    state: restarted
-    enabled: yes
-  register: started_etcd
-  until: started_etcd.status.ActiveState == "active"
-  retries: 3
-  delay: "2"
+  - name: 启动服务，并设置开机启动
+    systemd:
+      name: etcd
+      daemon_reload: yes
+      state: restarted
+      enabled: yes
+    register: started_etcd
+    until: started_etcd.status.ActiveState == "active"
+    retries: 3
+    delay: "2"
 
-- name: 检查服务状态
-  uri:
-    method: "GET"
-    url: "https://127.0.0.1:2379/health"
-    validate_certs: no
-    client_cert: "{{ etcd_cert_healthcheck_client }}"
-    client_key: "{{ etcd_cert_healthcheck_client_key }}"
-  register: result
-  until: result.status is defined and result.status == 200
-  retries: 3
-  delay: "{{ retry_stagger }}"
+  - name: 检查服务状态
+    uri:
+      method: "GET"
+      url: "https://127.0.0.1:2379/health"
+      validate_certs: no
+      client_cert: "{{ etcd_cert_healthcheck_client }}"
+      client_key: "{{ etcd_cert_healthcheck_client_key }}"
+    register: result
+    until: result.status is defined and result.status == 200
+    retries: 3
+    delay: "{{ retry_stagger }}"
+  when: not etcd_local | bool

@@ -1,0 +1,18 @@
+- name: 所有 pem 证书转 crt 证书, pem 私钥转 key 私钥
+  no_log: true
+  shell: >
+    {% if 'key' not in item.path %}
+    content=`cfssl-certinfo -cert {{ item.path }} | grep 'pem' | awk -F': ' '{print $2}' | sed 's/\"//g'`;
+    echo -e ${content} > {{ item.path.split('.')[:-1] | join('.') }}.crt
+    {% else %}
+    cp -a {{ item.path }} {{ item.path.split('-key')[:-1] | join('') }}.key
+    {% endif %}
+  with_items: "{{ out_item.files }}"
+  register: cert_content
+
+- name: 删除所有 pem 文件
+  no_log: true
+  file:
+    path: "{{ item.item.path }}"
+    state: absent
+  with_items: "{{ cert_content['results'] }}"
