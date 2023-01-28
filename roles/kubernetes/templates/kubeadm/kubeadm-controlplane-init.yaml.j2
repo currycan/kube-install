@@ -96,19 +96,6 @@ etcd:
 {# {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
     - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
 {% endfor %} #}
-    extraArgs:
-      data-dir: "{{ etcd_data_dir }}"
-      wal-dir: "{{ etcd_wal_dir }}"
-  extraVolumes:
-    - hostPath: "/etc/localtime"
-      mountPath: "/etc/localtime"
-      pathType: File
-      readOnly: true
-      name: localtime
-    - hostPath: "{{ etcd_data_dir }}"
-      mountPath: "{{ etcd_wal_dir }}"
-      pathType: DirectoryOrCreate
-      readOnly: true
 imageRepository: "{{ kube_image_repository }}"
 networking:
   dnsDomain: "{{ cluster_domain_name }}"
