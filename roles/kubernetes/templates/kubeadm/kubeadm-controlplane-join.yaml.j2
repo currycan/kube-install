@@ -16,18 +16,18 @@ discovery:
   tlsBootstrapToken: {{ bootstrap_token }}
 controlPlane:
   localAPIEndpoint:
-    advertiseAddress: {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
+    advertiseAddress: "{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
     bindPort: 6443
 nodeRegistration:
   kubeletExtraArgs:
 {% if (kube_version is version('1.24.0', '<')) %}
     network-plugin: cni
 {% endif %}
-    root-dir: {{ kubelet_data_dir }}
-    hostname-override: {{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}
+    root-dir: "{{ kubelet_data_dir }}"
+    hostname-override: "{{ hostvars[inventory_hostname]['ansible_' + iface].ipv4.address }}"
     pod-infra-container-image: "{{ images.infra.name }}"
-  criSocket: {{ cri_socket }}
-  name: {{ inventory_hostname }}
+  criSocket: "{{ cri_socket }}"
+  name: "{{ inventory_hostname }}"
 {% if inventory_hostname in groups['kube_masters'] and inventory_hostname not in groups['kube_nodes'] %}
   taints:
   - effect: NoSchedule
@@ -44,10 +44,10 @@ apiVersion: kubeadm.k8s.io/v1beta2
 apiVersion: kubeadm.k8s.io/v1beta1
 {% endif %}
 kind: ClusterConfiguration
-kubernetesVersion: v{{ kube_version }}
-clusterName: {{ cluster_name }}
+kubernetesVersion: "v{{ kube_version }}"
+clusterName: "{{ cluster_name }}"
 controlPlaneEndpoint: "{{ kube_master_external_domain.split(',')[0] }}:{%- if groups['kube_masters'] | length == 1 or lb_mode == 'kube-vip' or lb_mode == 'kube-lvscare' -%}6443{%- else -%}8443{%- endif %}"
-certificatesDir: {{ k8s_pki_dir }}
+certificatesDir: "{{ k8s_pki_dir }}"
 {% if (kube_version is version('1.15.0', '>=')) and (not skip_coredns | bool) %}
 dns:
   type: CoreDNS
@@ -74,21 +74,79 @@ etcd:
 {% endif %}
 {% endfor %}
 {% endif %}
-    caFile: {{ etcd_ca }}
-    certFile: {{ etcd_cert_apiserver_server }}
-    keyFile: {{ etcd_cert_apiserver_server_key }}
+    caFile: "{{ etcd_ca }}"
+    certFile: "{{ etcd_cert_apiserver_server }}"
+    keyFile: "{{ etcd_cert_apiserver_server_key }}"
+    serverCertSANs:
+    - localhost
+    - 127.0.0.1
+{# {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
+    - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
+{% endfor %} #}
+    peerCertSANs:
+    - localhost
+{% for domain in etcd_domain_name.split(',') %}
+    - {{ domain | trim }}
+{% endfor %}
+{# {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
+    - {{ hostvars[host].ansible_hostname | lower }}
+{% endfor %} #}
+    - 127.0.0.1
+{# {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
+    - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
+{% endfor %} #}
+    extraArgs:
+      data-dir: "{{ etcd_data_dir }}"
+      wal-dir: "{{ etcd_wal_dir }}"
+  extraVolumes:
+    - hostPath: "/etc/localtime"
+      mountPath: "/etc/localtime"
+      pathType: File
+      readOnly: true
+      name: localtime
+    - hostPath: "{{ etcd_data_dir }}"
+      mountPath: "{{ etcd_wal_dir }}"
+      pathType: DirectoryOrCreate
+      readOnly: true
 imageRepository: "{{ kube_image_repository }}"
 networking:
-  dnsDomain: {{ cluster_domain_name }}
-  podSubnet: {{ pod_network_cidr }}
+  dnsDomain: "{{ cluster_domain_name }}"
+  podSubnet: "{{ pod_network_cidr }}"
   serviceSubnet: "{{ service_subnet }}"
 apiServer:
+  certSANs:
+  - localhost
+  - kubernetes
+  - kubernetes.default
+  - kubernetes.default.svc
+{% for sub_domain in cluster_domain_name.split('.') %}
+  {%- set outer_loop = loop %}
+  - kubernetes.default.svc.{% for domain in cluster_domain_name.split('.') %}{% if loop.index <= outer_loop.index %}{{ domain }}{% if loop.index < outer_loop.index %}.{% endif %}{% endif %}{% endfor %}
+
+{% endfor %}
+  {# {% for host in (groups['kube_masters']| default([])) | unique %}
+    - {{ hostvars[host]['ansible_hostname'] | lower }}
+  {% endfor %} #}
+{% for domain in kube_master_external_domain.split(',') %}
+  - {{ domain | trim }}
+{% endfor %}
+  - 127.0.0.1
+  - {{ api_service_ip }}
+{% if lb_apiserver_ip is defined %}
+  - {{ lb_apiserver_ip }}
+{% endif %}
+{# {% for host in (groups['kube_masters'] | default([])) | unique %}
+  - {{ hostvars[host]['ansible_' + iface].ipv4.address }}
+{% endfor %} #}
+{% for ip in kube_master_external_ip.split(',') %}
+  - {{ ip | trim }}
+{% endfor %}
   extraArgs:
 {% if apiserver_enable_admission_plugins|length > 0 %}
-    enable-admission-plugins: {{ apiserver_enable_admission_plugins | join(',') }}
+    enable-admission-plugins: "{{ apiserver_enable_admission_plugins | join(',') }}"
 {% endif %}
 {% if apiserver_disable_admission_plugins|length > 0 %}
-    disable-admission-plugins: {{ apiserver_disable_admission_plugins | join(',') }}
+    disable-admission-plugins: "{{ apiserver_disable_admission_plugins | join(',') }}"
 {% endif %}
     feature-gates: "{%- if feature_gates != None -%}{% for k,v in feature_gates.items() %}{{ k }}={{ v | lower }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}"
 {% if apiserver_extra_args|length > 0 %}
@@ -97,8 +155,8 @@ apiServer:
 {% endfor %}
 {% endif %}
   extraVolumes:
-    - hostPath: /etc/localtime
-      mountPath: /etc/localtime
+    - hostPath: "/etc/localtime"
+      mountPath: "/etc/localtime"
       pathType: File
       readOnly: true
       name: localtime
@@ -126,15 +184,14 @@ controllerManager:
     bind-address: 127.0.0.1
     feature-gates: "{%- if feature_gates != None -%}{% for k,v in feature_gates.items() %}{{ k }}={{ v | lower }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}"
     profiling: "false"
-
 {% if controller_extra_args|length > 0 %}
 {% for key in controller_extra_args %}
     {{ key }}: "{{ controller_extra_args[key] }}"
 {% endfor %}
 {% endif %}
   extraVolumes:
-    - hostPath: /etc/localtime
-      mountPath: /etc/localtime
+    - hostPath: "/etc/localtime"
+      mountPath: "/etc/localtime"
       pathType: File
       readOnly: true
       name: localtime
@@ -159,8 +216,8 @@ scheduler:
 {% endfor %}
 {% endif %}
   extraVolumes:
-    - hostPath: /etc/localtime
-      mountPath: /etc/localtime
+    - hostPath: "/etc/localtime"
+      mountPath: "/etc/localtime"
       pathType: File
       readOnly: true
       name: localtime

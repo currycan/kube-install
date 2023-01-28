@@ -1,43 +1,57 @@
-# - block:
-#   - name: debug
-#     debug:
-#       msg: "安装 kubernetes, 可能需要一定时间。。"
-#     run_once: true
+- block:
+  - name: debug
+    debug:
+      msg: "安装 kubernetes, 可能需要一定时间。。"
+    run_once: true
 
-#   - name: 离线安装 kubernetes
-#     command: >-
-#       rpm -Uvh --nodeps --force *.rpm
-#     args:
-#       warn: false
-#       chdir: "{{ cache_dir }}/kubernetes"
-#     register: kubernetes_rpm_install
-#     failed_when: kubernetes_rpm_install.rc != 0 and "is already installed" not in kubernetes_rpm_install.stderr
-#     changed_when: kubernetes_rpm_install.rc == 0
-#   when: setup_way != 'binary'
+  - name: 离线安装 kubernetes
+    command: >-
+      rpm -Uvh --nodeps --force *.rpm
+    args:
+      warn: false
+      chdir: "{{ cache_dir }}/kubernetes"
+    register: kubernetes_rpm_install
+    failed_when: kubernetes_rpm_install.rc != 0 and "is already installed" not in kubernetes_rpm_install.stderr
+    changed_when: kubernetes_rpm_install.rc == 0
+  when: setup_way != 'binary'
 
-# - name: 二进制安装 kubernetes
-#   when: setup_way == 'binary'
-#   copy:
-#     src: "{{ item.src }}"
-#     dest: "{{ item.dest }}"
-#     owner: root
-#     group: root
-#     mode: 0755
-#   with_items:
-#     - { src: "{{ cache_dir }}/binary/kubernetes/", dest: "/usr/bin/"}
+- name: 二进制安装 kubernetes
+  when: setup_way == 'binary'
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { src: "{{ cache_dir }}/binary/kubernetes/", dest: "/usr/bin/"}
 
-# - name: 安装 helm
-#   when: inventory_hostname in groups['kube_masters']
-#   copy:
-#     src: "{{ item.src }}"
-#     dest: "{{ item.dest }}"
-#     owner: root
-#     group: root
-#     mode: 0755
-#   with_items:
-#     - { src: "{{ cache_dir }}/binary/helm/", dest: "/usr/bin/"}
+- name: 安装证书更新脚本(要求 kubernetes 版本>1.17)
+  copy:
+    src: "{{ inventory_dir }}/roles/certificates/files/update-kubeadm-cert.sh"
+    dest: "/usr/local/bin/"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: 安装 helm
+  when: inventory_hostname in groups['kube_masters']
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { src: "{{ cache_dir }}/binary/helm/", dest: "/usr/bin/"}
 
 - block:
+  - name: 生成 bootstrap token
+    when:
+      - add_etcds_task is undefined
+      - add_masters_task is undefined
+    include_tasks: "{{ inventory_dir }}/roles/certificates/tasks/kube-config/gen_bootstrap_token.yml"
+
   - name: 获取 bootstrap_token
     shell: >
       cat "{{ kubernetes_etc_dir }}/token.csv" | grep kubelet-bootstrap | cut -d',' -f1

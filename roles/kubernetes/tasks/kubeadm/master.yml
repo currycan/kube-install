@@ -12,7 +12,7 @@
         {%- endif -%}
       done;
       echo $cs_running_num
-    register: cs_statuses_result
+    register: cs_status_result
 
   - block:
     # kubeadm init --pod-network-cidr="172.30.0.0/16" --kubernetes-version=v1.18.6 --image-repository=registry.aliyuncs.com/k8sxio --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests --dry-run
@@ -57,7 +57,7 @@
       until: lb_status.rc == 0
       retries: 8
       delay: 15
-    when: 'cs_statuses_result.stdout is defined and cs_statuses_result.stdout != "3"'
+    when: 'cs_status_result.stdout is defined and cs_status_result.stdout != "3"'
     run_once: true
     delegate_to: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}"
 
@@ -73,7 +73,7 @@
   - name: 生成 master 节点 join token
     when: install_way == 'command'
     shell: >
-      echo $(kubeadm token create --print-join-command --ttl=15m) --certificate-key $(kubeadm init phase upload-certs --upload-certs --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml | sed -n '3p') | sed "s#{{ kube_master_external_domain.split(',')[0] }}#{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }}#"
+      echo $(kubeadm token create --print-join-command --ttl=15m) --certificate-key $(kubeadm init phase upload-certs --upload-certs --config {{ kubernetes_etc_dir }}/kubeadm-config.yaml | sed -n '3p')
     environment:
       KUBECONFIG: "{{ kubernetes_etc_dir }}/admin.conf"
     run_once: true
@@ -124,4 +124,10 @@
     when:
       - 'get_nodes_result.stdout != "1"'
       - inventory_hostname != groups['kube_masters'] | difference(groups['delete_masters']) | unique | first
+
+  - name: 更新证书 10 年有效期
+    shell: >
+      /usr/local/bin/update-kubeadm-cert.sh all
+    environment:
+      ENABLE_INIT: true
   when: "inventory_hostname in (groups['kube_masters'] | difference(groups['delete_masters']))"

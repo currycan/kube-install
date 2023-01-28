@@ -79,6 +79,7 @@ etcd::cron::save(){
 }
 
 main(){
+    mkdir -p $bak_dir
     [ -n "$bak_count" ] && etcd::cron::save || etcd3 snapshot save $@
 }
 

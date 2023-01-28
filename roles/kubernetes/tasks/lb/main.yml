@@ -27,6 +27,28 @@
   register: lb_running
 
 - block:
+  - name: 添加 kube-apiserver 域名到 hosts 文件中
+    blockinfile:
+      path: /etc/hosts
+      block: |-
+        {% for domain in kube_master_external_domain.split(',') %}
+        {{ lb_apiserver_ip }} {{ domain | trim }}
+        {% endfor %}
+      mode: 0644
+      state: present
+      create: yes
+      backup: yes
+      marker: "# Ansible kube-apiserver domain {mark}"
+
+  - name: 确认 kubelet 暂无其他配置
+    file:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - "{{ systemd_service_dir }}/kubelet.service.d/10-kubeadm.conf"
+      - "{{ systemd_service_dir }}/kubelet.service.d/11-container-runtime.conf"
+      - "{{ systemd_service_dir }}/kubelet.service.d/12-cgroup.conf"
+
   - name: 安装 kube-lvscare
     when:
     - lb_mode == "kube-lvscare"

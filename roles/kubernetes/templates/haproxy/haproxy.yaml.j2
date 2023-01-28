@@ -39,10 +39,6 @@ spec:
     hostPath:
       path: "{{ lb_config_dir }}/haproxy.cfg"
       type: File
-  - name: haproxy-run
-    hostPath:
-      path: "/run/haproxy/"
-      type: DirectoryOrCreate
   - hostPath:
       path: /etc/localtime
       type: File

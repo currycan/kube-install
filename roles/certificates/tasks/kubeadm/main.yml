@@ -1,37 +1,37 @@
-- name: 离线安装 kubeadm
-  when: setup_way != 'binary'
-  yum:
-    name: "{{ cache_dir }}/kubernetes/*kubeadm*.rpm"
-    state: present
-
-- name: 二进制安装 kubeadm
-  when: setup_way == 'binary'
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    owner: root
-    group: root
-    mode: 0755
-  with_items:
-    - { src: "{{ cache_dir }}/binary/kubernetes/kubeadm", dest: "/usr/bin/"}
-
-- name: 安装证书更新脚本(要求 kubernetes 版本>1.17)
-  copy:
-    src: "{{ inventory_dir }}/roles/certificates/files/update-kubeadm-cert.sh"
-    dest: "/usr/local/bin/"
-    owner: root
-    group: root
-    mode: 0755
-
-- name: 配置临时文件 kubeadm-config-certs.yaml 用于生成证书
-  template:
-    src: "{{ inventory_dir }}/roles/certificates/templates/kubeadm/kubeadm-config.yaml.j2"
-    dest: "{{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml"
-    owner: "root"
-    group: "root"
-    mode: "0644"
-
 - block:
+  - name: 离线安装 kubeadm
+    when: setup_way != 'binary'
+    yum:
+      name: "{{ cache_dir }}/kubernetes/*kubeadm*.rpm"
+      state: present
+
+  - name: 二进制安装 kubeadm
+    when: setup_way == 'binary'
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      owner: root
+      group: root
+      mode: 0755
+    with_items:
+      - { src: "{{ cache_dir }}/binary/kubernetes/kubeadm", dest: "/usr/bin/"}
+
+  - name: 安装证书更新脚本(要求 kubernetes 版本>1.17)
+    copy:
+      src: "{{ inventory_dir }}/roles/certificates/files/update-kubeadm-cert.sh"
+      dest: "/usr/local/bin/"
+      owner: root
+      group: root
+      mode: 0755
+
+  - name: 配置临时文件 kubeadm-config-certs.yaml 用于生成证书
+    template:
+      src: "{{ inventory_dir }}/roles/certificates/templates/kubeadm/kubeadm-config.yaml.j2"
+      dest: "{{ kubernetes_etc_dir }}/kubeadm-config-certs.yaml"
+      owner: "root"
+      group: "root"
+      mode: "0644"
+
   - name: "{{ groups['kube_masters'] | difference(groups['delete_masters']) | unique | first }} 节点生成证书和 kubeconfig 文件"
     #   kubeadm init phase certs all \
     #     --cert-dir={{ k8s_pki_dir }} \

@@ -31,6 +31,9 @@ etcd:
     keyFile: {{ etcd_cert_apiserver_server_key }}
     serverCertSANs:
     - localhost
+{% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
+    - {{ hostvars[host].ansible_hostname | lower }}
+{% endfor %}
     - 127.0.0.1
 {% for host in ((groups['kube_etcds'] | difference(groups['delete_etcds']) | unique)) %}
     - {{ hostvars[host]['ansible_' + iface].ipv4.address }}

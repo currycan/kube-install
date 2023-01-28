@@ -12,7 +12,7 @@ spec:
   priorityClassName: system-cluster-critical
   containers:
   - name: lb-openresty
-    image: {{ images.keepalived.name }}
+    image: {{ images.openresty.name }}
     imagePullPolicy: IfNotPresent
 {% if lb_healthcheck_port is defined %}
     livenessProbe:
