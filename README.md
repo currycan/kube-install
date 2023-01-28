@@ -112,9 +112,27 @@ ansible all -m shell -a "tar zxf /k8s_cache_${kube_offline_version}.tgz -C /"
 
 ```bash
 cp -f /k8s_cache/version.yml /etc/ansible/group_vars/all/version.yml
+/usr/bin/lvscare care --vs 10.10.10.49:6443 --health-path /healthz --health-schem https --rs 172.22.0.7:6443 --rs 172.22.0.10:6443 --rs 172.22.0.17:6443 --interval 5 --mode link
 ```
 
-## 2. 安装 nfs server
+## 2. 配置
+
+本项目支持多种方式一键安装 kubernetes 集群：二进制安装和 kubeadm 安装，证书创建方式也支持多种：cfssl、openssl、kubeadm、kube-certs，满足多种个性化需求。
+
+**默认使用 kube-certs 创建证书，kubeadm 搭建集群**。
+
+具体组合如下：
+binary:
+  certs: kube-certs
+  certs: kubeadm
+  certs: openssl
+  certs: cfssl
+kubeadm:
+  certs: kube-certs
+  certs: kubeadm
+  certs: openssl
+
+## 3. 安装 nfs server
 
 ```bash
 yum install nfs-utils rpcbind -y

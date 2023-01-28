@@ -15,6 +15,22 @@
 
 set -eu
 
+# func() {
+#     echo "Usage:"
+#     echo "download.sh [-v k8sVersion]"
+#     echo "Description: download all in one depended offline packages"
+#     echo "k8sVersion,the version of kubernetes you want to download."
+#     exit -1
+# }
+
+# while getopts 'h:v' params; do
+#     case $param in
+#         v) k8sVersion="$OPTARG";;
+#         h) func;;
+#         ?) func;;
+#     esac
+# done
+
 BASE_DIR=/k8s_cache
 BINARY_DIR=${BASE_DIR}/binary
 IMAGE_DIR=${BASE_DIR}/images
@@ -45,6 +61,9 @@ baseurl=https://copr-be.cloud.fedoraproject.org/results/kwizart/kernel-longterm-
 enabled=1
 gpgcheck=0
 EOF
+    # docker
+    yum install -y yum-utils
+    yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
     # kubernetes
     cat <<EOF > /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
@@ -56,18 +75,20 @@ repo_gpgcheck=0
 gpgkey=http://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
 http://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 EOF
+    # yum clean all
+    # yum makecache -y
 }
 
 function download_kernel_rpm (){
     echo ">>>>>>: 开始下载内核 rpm 包"
     yum install -y linux-firmware perl-interpreter
     yum --disablerepo="*" --enablerepo=kernel-longterm-4.19 install -y --downloadonly --downloaddir=${KERNEL_RPM_DIR} \
-    kernel-longterm \
-    kernel-longterm-core \
-    kernel-longterm-devel \
-    kernel-longterm-modules \
-    kernel-longterm-modules-extra \
-    kernel-longterm-cross-headers
+        kernel-longterm \
+        kernel-longterm-core \
+        kernel-longterm-devel \
+        kernel-longterm-modules \
+        kernel-longterm-modules-extra \
+        kernel-longterm-cross-headers
 }
 
 function download_chrony_rpm (){
@@ -121,16 +142,17 @@ function download_dependence_rpm (){
 
 function download_container_runtime_rpm (){
     echo ">>>>>>: 开始下载 containerd rpm 包"
-    yum install -y yum-utils
-    yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-    yum install -y --downloadonly --downloaddir=${CONTIANERD_RPM_DIR} containerd.io
-    yum install -y --downloadonly --downloaddir=${DOCKER_RPM_DIR} docker-ce docker-ce-cli containerd.io
+    yum install -y --downloadonly --downloaddir=${CONTIANERD_RPM_DIR} containerd.io-${CONTAINERD_VERSION}
+    yum install -y --downloadonly --downloaddir=${DOCKER_RPM_DIR} docker-ce-${DOCKER_VERSION} docker-ce-cli-${DOCKER_VERSION} containerd.io-${CONTAINERD_VERSION}
+    # download libseccomp，centos 7中yum下载的版本是2.3的，版本不满足我们最新containerd的需求，需要下载2.4以上的
+    curl -fSLo ${CONTIANERD_RPM_DIR}/libseccomp-2.5.2-1.el8.x86_64.rpm https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/libseccomp-2.5.2-1.el8.x86_64.rpm
+    rm -f ${CONTIANERD_RPM_DIR}/libseccomp-2.3.1-4.el7.x86_64.rpm
 }
 
 function download_kubernetes_rpm (){
     echo ">>>>>>: 开始下载 kubernetes rpm 包"
     # yum --disablerepo="*" --enablerepo="kubernetes" list available
-    yum install -y --downloadonly --downloaddir=${KUBERNETES_RPM_DIR} kubelet-${KUBE_VERSION}-0 kubeadm-${KUBE_VERSION}-0 kubectl-${KUBE_VERSION}-0
+    yum install -y --downloadonly --downloaddir=${KUBERNETES_RPM_DIR} kubelet-${KUBE_VERSION} kubeadm-${KUBE_VERSION} kubectl-${KUBE_VERSION}
 }
 
 function download_containerd_binary (){
@@ -204,7 +226,7 @@ function download_cfssl_binary (){
     echo ">>>>>>: 开始下载 cfssl 二进制包"
     if [ ! -d ${BINARY_DIR}/cfssl ];then
         mkdir -p ${BINARY_DIR}/cfssl
-        cfssl_version=`curl -sSf https://github.com/cloudflare/cfssl/tags | grep "releases/tag/" | head -n 1 | grep -oP "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
+        cfssl_version=`curl -sSf https://github.com/cloudflare/cfssl/tags | grep "releases/tag/" | head -n 1 | grep -oP "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
         # curl -fSLo ${BINARY_DIR}/cfssl/cfssl-bundle "https://github.com/cloudflare/cfssl/releases/download/${cfssl_version}/cfssl-bundle_${cfssl_version:1}_linux_amd64"
         curl -fSLo ${BINARY_DIR}/cfssl/cfssl-certinfo "https://github.com/cloudflare/cfssl/releases/download/${cfssl_version}/cfssl-certinfo_${cfssl_version:1}_linux_amd64"
         # curl -fSLo ${BINARY_DIR}/cfssl/cfssl-newkey "https://github.com/cloudflare/cfssl/releases/download/${cfssl_version}/cfssl-newkey_${cfssl_version:1}_linux_amd64"
@@ -228,16 +250,20 @@ function download_images (){
     do
         docker pull ${image_repo}/${img}
     done
+    docker pull ghcr.io/kube-vip/kube-vip:${KUBE_VIP_VERSION}
     docker save -o ${IMAGE_DIR}/master.tar.gz \
         registry.cn-hangzhou.aliyuncs.com/google_containers/kube-apiserver:v${KUBE_VERSION} \
         registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler:v${KUBE_VERSION} \
-        registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager:v${KUBE_VERSION}
+        registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager:v${KUBE_VERSION} \
+        ghcr.io/kube-vip/kube-vip:v${KUBE_VIP_VERSION}
+
     # all nodes
     docker pull ${image_repo}/kube-proxy:v${KUBE_VERSION}
     docker pull ${image_repo}/pause:${PAUSE_VERSION}
     docker save -o ${IMAGE_DIR}/all.tar.gz \
         registry.cn-hangzhou.aliyuncs.com/google_containers/kube-proxy:v${KUBE_VERSION} \
         registry.cn-hangzhou.aliyuncs.com/google_containers/pause:${PAUSE_VERSION}
+
     # worker nodes
     docker pull coredns/coredns:${COREDNS_VERSION}
     docker save -o ${IMAGE_DIR}/worker.tar.gz \
@@ -254,22 +280,41 @@ function version(){
     else
         # kernel
         KERNEL_OFFLIE_VERSION=`yum --disablerepo="*" --enablerepo=kernel-longterm-4.19 list kernel-longterm --showduplicates | sort -r | grep kernel-longterm | head -1 | awk -F' ' '{print $2}' | awk -F'.el7' '{print $1}'`
-        # etcd
-        ETCD_VERSION=`curl -sSf https://github.com/etcd-io/etcd/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | head -n 1 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
         # kubernetes
-        KUBE_VERSION=`curl -sSf https://storage.googleapis.com/kubernetes-release/release/stable.txt | grep -v % | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
+        KUBE_VERSION=${k8sVersion:-`curl -sSf https://storage.googleapis.com/kubernetes-release/release/stable.txt | grep -v % | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`}
+        # download kubeadm to get component version
+        # curl -fSLO /tmp/kubeadm https://dl.k8s.io/v${KUBE_VERSION}/bin/linux/amd64/kubeadm
+        curl -fSLo /tmp/kubeadm https://storage.googleapis.com/kubernetes-release/release/v${KUBE_VERSION}/bin/linux/amd64/kubeadm
+        chmod 755 /tmp/kubeadm
+        # etcd
+        # ETCD_VERSION=`curl -sSf https://github.com/etcd-io/etcd/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | head -n 1 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
+        ETCD_VERSION=`/tmp/kubeadm config images list | grep etcd | cut -d':' -f2 | cut -d'-' -f1`
+        # infrastructure pause image
+        # PAUSE_VERSION=`curl -sSf https://github.com/kubernetes/kubernetes/blob/master/build/pause/CHANGELOG.md | grep "</h1>" | head -n 2 | grep [0-9]\d*.[0-9]\d* -oP | tail -n 1`
+        PAUSE_VERSION=`/tmp/kubeadm config images list | grep pause | cut -d':' -f2`
+        # coreDNS
+        # COREDNS_VERSION=`curl -sSf https://github.com/coredns/coredns/tags | grep "releases/tag/" | head -n 1 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
+        COREDNS_VERSION=`/tmp/kubeadm config images list | grep coredns | cut -d':' -f2 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
+        # docker
+        # DOCKER_VERSION=`curl -sSf https://download.docker.com/linux/static/stable/x86_64/ | grep -e docker- | tail -n 1 | cut -d">" -f1 | grep -oP "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
+        # https://kops.sigs.k8s.io/releases/1.20-notes/
+        if [ `echo ${KUBE_VERSION} | cut -d'.' -f2` -le 16 ]; then
+            DOCKER_VERSION=18.09.9
+        elif [ `echo ${KUBE_VERSION} | cut -d'.' -f2` -le 20 ]; then
+            DOCKER_VERSION=19.03.15
+        elif [ `echo ${KUBE_VERSION} | cut -d'.' -f2` -le 23 ]; then
+            DOCKER_VERSION=20.10.22
+        else
+            DOCKER_VERSION=20.10.22
+        fi
         # containerd
         CONTAINERD_VERSION=`curl -sSf https://github.com/containerd/containerd/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
         # crictl
         CRICTL_VERSION=`curl -sSf https://github.com/kubernetes-sigs/cri-tools/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
-        # docker
-        DOCKER_VERSION=`curl -sSf https://download.docker.com/linux/static/stable/x86_64/ | grep -e docker- | tail -n 1 | cut -d">" -f1 | grep -oP "[a-zA-Z]*[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
         # helm
         HELM_VERSION=`curl -sSf https://github.com/helm/helm/tags | grep "releases/tag/" | grep -v "rc" | grep -v "alpha" | grep -v "beta" | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*" | head -n 1`
-        # infrastructure pause image
-        PAUSE_VERSION=`curl -sSf https://github.com/kubernetes/kubernetes/blob/master/build/pause/CHANGELOG.md | grep "</h1>" | head -n 2 | grep [0-9]\d*.[0-9]\d* -oP | tail -n 1`
-        # coreDns
-        COREDNS_VERSION=`curl -sSf https://github.com/coredns/coredns/tags | grep "releases/tag/" | head -n 1 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
+        # kube-vip
+        KUBE_VIP_VERSION=`curl -sSf https://api.github.com/repos/kube-vip/kube-vip/releases | grep tag_name | head -n 1 | grep -oP "[0-9]\d*\.[0-9]\d*\.[0-9]\d*"`
     fi
     echo 内核版本: $KERNEL_OFFLIE_VERSION
     echo etcd 版本: $ETCD_VERSION
@@ -279,6 +324,7 @@ function version(){
     echo helm 版本: $HELM_VERSION
     echo pause_version 版本: $PAUSE_VERSION
     echo coreDns 版本: $COREDNS_VERSION
+    echo kube-vip 版本: $KUBE_VIP_VERSION
 }
 
 function set_version(){
@@ -290,6 +336,7 @@ function set_version(){
     echo helm_version: ${HELM_VERSION} >> ${BASE_DIR}/version.yml
     echo pause_version: ${PAUSE_VERSION} >> ${BASE_DIR}/version.yml
     echo coredns_version: ${COREDNS_VERSION} >> ${BASE_DIR}/version.yml
+    echo kube_vip_version: ${KUBE_VIP_VERSION} >> ${BASE_DIR}/version.yml
 }
 
 function download () {
@@ -311,4 +358,5 @@ function download () {
     set_version
 }
 
+# k8sVersion=1.18.20
 download | tee download.log
